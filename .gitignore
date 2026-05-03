@@ -96,3 +96,4 @@ $RECYCLE.BIN/
 .nfs*
 .claude/settings.local.json
 example.mmb
+*.hprof

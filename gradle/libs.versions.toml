@@ -1,0 +1,79 @@
+[versions]
+kotlin                  = "2.3.21"
+agp                     = "8.13.2"
+compose-bom             = "2024.09.00"
+sqldelight              = "2.0.2"
+koin                    = "3.5.6"
+koin-compose            = "3.5.6"
+datastore               = "1.1.1"
+coroutines              = "1.8.1"
+navigation-compose      = "2.7.7"
+gms-auth                = "21.2.0"
+google-auth             = "1.7.0"
+androidx-core           = "1.13.1"
+androidx-lifecycle      = "2.8.4"
+activity-compose        = "1.9.1"
+junit                   = "4.13.2"
+mockk                   = "1.13.12"
+turbine                 = "1.1.0"
+kotest                  = "5.9.1"
+kotlinx-datetime        = "0.6.1"
+
+[libraries]
+# Compose
+compose-bom             = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
+compose-ui              = { group = "androidx.compose.ui", name = "ui" }
+compose-ui-tooling      = { group = "androidx.compose.ui", name = "ui-tooling" }
+compose-ui-preview      = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+compose-material3       = { group = "androidx.compose.material3", name = "material3" }
+compose-icons           = { group = "androidx.compose.material", name = "material-icons-extended" }
+activity-compose        = { group = "androidx.activity", name = "activity-compose", version.ref = "activity-compose" }
+navigation-compose      = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
+
+# SQLDelight
+sqldelight-android      = { group = "app.cash.sqldelight", name = "android-driver", version.ref = "sqldelight" }
+sqldelight-coroutines   = { group = "app.cash.sqldelight", name = "coroutines-extensions", version.ref = "sqldelight" }
+sqldelight-runtime      = { group = "app.cash.sqldelight", name = "runtime", version.ref = "sqldelight" }
+
+# Koin
+koin-android            = { group = "io.insert-koin", name = "koin-android", version.ref = "koin" }
+koin-compose            = { group = "io.insert-koin", name = "koin-androidx-compose", version.ref = "koin-compose" }
+koin-core               = { group = "io.insert-koin", name = "koin-core", version.ref = "koin" }
+koin-test               = { group = "io.insert-koin", name = "koin-test", version.ref = "koin" }
+koin-test-junit4        = { group = "io.insert-koin", name = "koin-test-junit4", version.ref = "koin" }
+
+# DataStore
+datastore-prefs         = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+
+# Coroutines
+coroutines-core         = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+coroutines-android      = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+coroutines-test         = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+
+# Google Drive
+google-drive-sdk        = { group = "com.google.apis", name = "google-api-services-drive", version = "v3-rev20240521-2.0.0" }
+google-auth-library     = { group = "com.google.auth", name = "google-auth-library-oauth2-http", version.ref = "google-auth" }
+gms-auth                = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "gms-auth" }
+google-http-android     = { group = "com.google.http-client", name = "google-http-client-android", version = "1.44.2" }
+
+# AndroidX
+androidx-core           = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
+lifecycle-viewmodel     = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "androidx-lifecycle" }
+lifecycle-compose       = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
+
+# KotlinX
+kotlinx-datetime        = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version.ref = "kotlinx-datetime" }
+
+# Testing
+junit                   = { group = "junit", name = "junit", version.ref = "junit" }
+mockk                   = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+turbine                 = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+kotest-assertions       = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
+
+[plugins]
+kotlin-multiplatform    = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlin-android          = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+android-application     = { id = "com.android.application", version.ref = "agp" }
+android-library         = { id = "com.android.library", version.ref = "agp" }
+sqldelight              = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
+compose-compiler        = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

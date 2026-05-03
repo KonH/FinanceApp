@@ -1,0 +1,13 @@
+package com.konhit.financeapp.android.ui.navigation
+
+object Routes {
+    const val FIRST_LAUNCH  = "first_launch"
+    const val MAIN          = "main"
+    const val SETTINGS      = "settings"
+    const val ACCOUNT       = "account/{accountId}"
+    const val TRANSACTION   = "transaction?accountId={accountId}&transId={transId}"
+
+    fun account(accountId: Long) = "account/$accountId"
+    fun transactionAdd(accountId: Long) = "transaction?accountId=$accountId&transId=-1"
+    fun transactionEdit(transId: Long) = "transaction?accountId=-1&transId=$transId"
+}
