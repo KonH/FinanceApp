@@ -83,8 +83,8 @@ class SyncCoordinator(
     private fun openLocalFile(file: File, @Suppress("UNUSED_PARAMETER") accessMode: AccessMode) {
         // Read-only access mode is enforced at the repository layer (checkWritable()).
         // The database is always opened read-write at the driver level.
-        val db = dbFactory.openExisting(file)
-        val payeeId = db.payeeQueries.selectFirst().executeAsOneOrNull() ?: -1L
-        dbHolder.open(db, file, payeeId)
+        val conn = dbFactory.openExisting(file)
+        val payeeId = conn.database.payeeQueries.selectFirst().executeAsOneOrNull() ?: -1L
+        dbHolder.open(conn.database, conn.driver, file, payeeId)
     }
 }

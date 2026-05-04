@@ -92,9 +92,9 @@ LEFT JOIN CATEGORY_V1 c ON t.CATEGID = c.CATEGID
 LEFT JOIN ACCOUNTLIST_V1 a ON t.ACCOUNTID = a.ACCOUNTID
 WHERE t.DELETEDTIME IS NULL
   AND (
-      (:query IS NULL OR t.NOTES LIKE '%' || :query || '%')
-   OR (:query IS NULL OR CAST(t.TRANSAMOUNT AS TEXT) LIKE '%' || :query || '%')
-   OR (:query IS NULL OR c.CATEGNAME LIKE '%' || :query || '%')
-   OR (:query IS NULL OR a.ACCOUNTNAME LIKE '%' || :query || '%')
+      t.NOTES LIKE '%' || :query || '%'
+   OR CAST(t.TRANSAMOUNT AS TEXT) LIKE '%' || :query || '%'
+   OR c.CATEGNAME LIKE '%' || :query || '%'
+   OR a.ACCOUNTNAME LIKE '%' || :query || '%'
   )
 ORDER BY t.TRANSDATE DESC, t.TRANSID DESC;

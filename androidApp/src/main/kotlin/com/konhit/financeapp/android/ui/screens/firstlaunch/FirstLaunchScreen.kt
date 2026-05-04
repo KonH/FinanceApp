@@ -12,11 +12,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
+import com.konhit.financeapp.drive.DriveAuthManager
+import org.koin.androidx.compose.get
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun FirstLaunchScreen(onFileReady: () -> Unit) {
     val viewModel: FirstLaunchViewModel = koinViewModel()
+    val driveAuthManager: DriveAuthManager = get()
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
 
@@ -54,12 +57,7 @@ fun FirstLaunchScreen(onFileReady: () -> Unit) {
 
         if (!state.isSignedIn) {
             Button(onClick = {
-                signInLauncher.launch(
-                    (context as? Activity)?.let {
-                        org.koin.androidx.compose.get<com.konhit.financeapp.drive.DriveAuthManager>()
-                            .signInClient.signInIntent
-                    }
-                )
+                signInLauncher.launch(driveAuthManager.signInClient.signInIntent)
             }) {
                 Text("Sign in with Google")
             }

@@ -14,7 +14,8 @@ class InitialiseFileUseCase(
     private val settings: SettingsRepository
 ) {
     suspend operator fun invoke(localFile: File, fileName: String) {
-        val db = dbFactory.createNew(localFile)
+        val conn = dbFactory.createNew(localFile)
+        val db = conn.database
 
         // Insert INFOTABLE defaults required by MMEX
         db.infoTableQueries.insert("DATAVERSION", "3")
@@ -27,7 +28,7 @@ class InitialiseFileUseCase(
         val payeeId = System.currentTimeMillis() * 1000L
         db.payeeQueries.insert(payeeId, "Default")
 
-        dbHolder.open(db, localFile, payeeId)
+        dbHolder.open(db, conn.driver, localFile, payeeId)
 
         // Upload to Drive and store the file ID
         val fileId = driveClient.upload(localFile, null)

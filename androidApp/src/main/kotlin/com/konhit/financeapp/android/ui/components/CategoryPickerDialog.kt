@@ -23,9 +23,9 @@ fun CategoryPickerDialog(
     onDismiss: () -> Unit
 ) {
     val roots = remember(categories) { categories.toTree() }
-    val expandedIds = remember { mutableStateSetOf<Long>() }
+    var expandedIds by remember { mutableStateOf(setOf<Long>()) }
 
-    val flatList = remember(roots, expandedIds.toSet()) {
+    val flatList = remember(roots, expandedIds) {
         roots.flatMap { root ->
             root.flattenFiltered(expandedIds)
         }
@@ -42,8 +42,10 @@ fun CategoryPickerDialog(
                         depth = depth,
                         isExpanded = node.category.id in expandedIds,
                         onToggle = {
-                            if (node.category.id in expandedIds) expandedIds.remove(node.category.id)
-                            else expandedIds.add(node.category.id)
+                            expandedIds = if (node.category.id in expandedIds)
+                                expandedIds - node.category.id
+                            else
+                                expandedIds + node.category.id
                         },
                         onSelect = { onSelect(node.category) }
                     )

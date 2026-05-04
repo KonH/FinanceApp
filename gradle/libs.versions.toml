@@ -15,6 +15,8 @@ androidx-lifecycle      = "2.8.4"
 activity-compose        = "1.9.1"
 junit                   = "4.13.2"
 mockk                   = "1.13.12"
+androidx-test           = "1.6.1"
+androidx-test-ext       = "1.2.1"
 turbine                 = "1.1.0"
 kotest                  = "5.9.1"
 kotlinx-datetime        = "0.6.1"
@@ -55,6 +57,7 @@ google-drive-sdk        = { group = "com.google.apis", name = "google-api-servic
 google-auth-library     = { group = "com.google.auth", name = "google-auth-library-oauth2-http", version.ref = "google-auth" }
 gms-auth                = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "gms-auth" }
 google-http-android     = { group = "com.google.http-client", name = "google-http-client-android", version = "1.44.2" }
+google-api-client-android = { group = "com.google.api-client", name = "google-api-client-android", version = "2.7.0" }
 
 # AndroidX
 androidx-core           = { group = "androidx.core", name = "core-ktx", version.ref = "androidx-core" }
@@ -69,6 +72,8 @@ junit                   = { group = "junit", name = "junit", version.ref = "juni
 mockk                   = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 turbine                 = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 kotest-assertions       = { group = "io.kotest", name = "kotest-assertions-core", version.ref = "kotest" }
+androidx-test-runner    = { group = "androidx.test", name = "runner", version.ref = "androidx-test" }
+androidx-test-junit     = { group = "androidx.test.ext", name = "junit", version.ref = "androidx-test-ext" }
 
 [plugins]
 kotlin-multiplatform    = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

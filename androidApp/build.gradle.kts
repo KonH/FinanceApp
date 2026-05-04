@@ -31,7 +31,8 @@ android {
                 "META-INF/LICENSE",
                 "META-INF/LICENSE.txt",
                 "META-INF/NOTICE",
-                "META-INF/NOTICE.txt"
+                "META-INF/NOTICE.txt",
+                "META-INF/INDEX.LIST"
             )
         }
     }
@@ -54,6 +55,9 @@ dependencies {
 
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
+
+    implementation(libs.kotlinx.datetime)
+    implementation(libs.gms.auth)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

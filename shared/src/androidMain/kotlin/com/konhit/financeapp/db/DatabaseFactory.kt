@@ -18,43 +18,41 @@ class DatabaseFactory(private val context: Context) {
      * user_version will be bumped to schema.version by SQLiteOpenHelper after this,
      * which is harmless — MMEX uses INFOTABLE_V1.DATAVERSION for its own versioning.
      */
-    fun openExisting(file: File): MmexDatabase {
+    fun openExisting(file: File): DatabaseConnection {
         require(file.exists()) { "File does not exist: ${file.absolutePath}" }
-        return MmexDatabase(
-            AndroidSqliteDriver(
-                schema = MmexDatabase.Schema,
-                context = context,
-                name = file.absolutePath,
-                callback = object : AndroidSqliteDriver.Callback(MmexDatabase.Schema) {
-                    override fun onCreate(db: SupportSQLiteDatabase) {
-                        // Never run DDL on existing files.
-                    }
-                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
-                        // Never migrate MMEX files.
-                    }
+        val driver = AndroidSqliteDriver(
+            schema = MmexDatabase.Schema,
+            context = context,
+            name = file.absolutePath,
+            callback = object : AndroidSqliteDriver.Callback(MmexDatabase.Schema) {
+                override fun onCreate(db: SupportSQLiteDatabase) {
+                    // Never run DDL on existing files.
                 }
-            )
+                override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                    // Never migrate MMEX files.
+                }
+            }
         )
+        return DatabaseConnection(MmexDatabase(driver), driver)
     }
 
     /**
      * Creates a brand-new .mmb file and initialises the full MMEX schema.
      * Schema.create() is called exactly once here, and never on existing files.
      */
-    fun createNew(file: File): MmexDatabase {
+    fun createNew(file: File): DatabaseConnection {
         require(!file.exists()) { "File already exists: ${file.absolutePath}" }
         file.parentFile?.mkdirs()
-        return MmexDatabase(
-            AndroidSqliteDriver(
-                schema = MmexDatabase.Schema,
-                context = context,
-                name = file.absolutePath,
-                callback = object : AndroidSqliteDriver.Callback(MmexDatabase.Schema) {
-                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
-                        // No migration path — new files start at current schema version.
-                    }
+        val driver = AndroidSqliteDriver(
+            schema = MmexDatabase.Schema,
+            context = context,
+            name = file.absolutePath,
+            callback = object : AndroidSqliteDriver.Callback(MmexDatabase.Schema) {
+                override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                    // No migration path — new files start at current schema version.
                 }
-            )
+            }
         )
+        return DatabaseConnection(MmexDatabase(driver), driver)
     }
 }

@@ -29,17 +29,19 @@ fun InlineCalculator(
     }
 
     fun handleOp(op: Char) {
-        val current = calc.display.toDoubleOrNull() ?: return
-        val result = if (calc.pendingOp != null && calc.operand != null) {
-            applyOp(calc.operand, current, calc.pendingOp)
+        val state = calc
+        val current = state.display.toDoubleOrNull() ?: return
+        val result = if (state.pendingOp != null && state.operand != null) {
+            applyOp(state.operand, current, state.pendingOp)
         } else current
         calc = CalcState(display = result.toDisplayString(), pendingOp = op, operand = result, clearNext = true)
     }
 
     fun handleEquals() {
-        val current = calc.display.toDoubleOrNull() ?: return
-        val result = if (calc.pendingOp != null && calc.operand != null) {
-            applyOp(calc.operand, current, calc.pendingOp)
+        val state = calc
+        val current = state.display.toDoubleOrNull() ?: return
+        val result = if (state.pendingOp != null && state.operand != null) {
+            applyOp(state.operand, current, state.pendingOp)
         } else current
         onResult(result)
     }

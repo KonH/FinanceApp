@@ -28,6 +28,7 @@ kotlin {
             implementation(libs.google.drive.sdk)
             implementation(libs.google.auth.library)
             implementation(libs.google.http.android)
+            implementation(libs.google.api.client.android)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -36,8 +37,11 @@ kotlin {
             implementation(libs.kotest.assertions)
         }
         val androidInstrumentedTest by getting {
+            kotlin.srcDirs("src/androidTest/kotlin")
             dependencies {
                 implementation(libs.junit)
+                implementation(libs.androidx.test.runner)
+                implementation(libs.androidx.test.junit)
                 implementation(libs.koin.test)
                 implementation(libs.koin.test.junit4)
             }
@@ -48,7 +52,15 @@ kotlin {
 android {
     namespace = "com.konhit.financeapp.shared"
     compileSdk = 35
-    defaultConfig { minSdk = 26 }
+    defaultConfig {
+        minSdk = 26
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    sourceSets {
+        getByName("androidTest") {
+            assets.srcDir("src/androidTest/assets")
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

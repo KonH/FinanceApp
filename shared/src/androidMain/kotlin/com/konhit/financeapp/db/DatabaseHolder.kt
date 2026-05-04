@@ -1,5 +1,6 @@
 package com.konhit.financeapp.db
 
+import app.cash.sqldelight.db.SqlDriver
 import java.io.File
 
 class DatabaseHolder {
@@ -13,15 +14,19 @@ class DatabaseHolder {
     var defaultPayeeId: Long = -1L
         private set
 
-    fun open(db: MmexDatabase, file: File, payeeId: Long) {
-        database?.close()
+    private var driver: SqlDriver? = null
+
+    fun open(db: MmexDatabase, driver: SqlDriver, file: File, payeeId: Long) {
+        this.driver?.close()
+        this.driver = driver
         database = db
         currentFile = file
         defaultPayeeId = payeeId
     }
 
     fun close() {
-        database?.close()
+        driver?.close()
+        driver = null
         database = null
         currentFile = null
         defaultPayeeId = -1L
