@@ -3,13 +3,9 @@ package com.konhit.financeapp.android.ui.screens.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.konhit.financeapp.domain.model.AccessMode
-import com.konhit.financeapp.domain.model.Account
-import com.konhit.financeapp.domain.model.Category
-import com.konhit.financeapp.domain.model.Currency
-import com.konhit.financeapp.domain.repository.AccountRepository
-import com.konhit.financeapp.domain.repository.CategoryRepository
-import com.konhit.financeapp.domain.repository.CurrencyRepository
 import com.konhit.financeapp.domain.repository.SettingsRepository
+import com.konhit.financeapp.feature.FeatureFlags
+import com.konhit.financeapp.drive.DriveAuthManager
 import com.konhit.financeapp.drive.SyncCoordinator
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -21,17 +17,16 @@ data class SettingsState(
     val driveFileId: String? = null,
     val accessMode: AccessMode = AccessMode.READ_WRITE,
     val lastSyncDisplay: String = "Never",
-    val accounts: List<Account> = emptyList(),
-    val categories: List<Category> = emptyList(),
-    val currencies: List<Currency> = emptyList()
+    val isGoogleConnected: Boolean = false,
+    val googleAccountEmail: String? = null,
+    val isGoogleDriveEnabled: Boolean = false
 )
 
 class SettingsViewModel(
     private val settings: SettingsRepository,
-    private val accountRepo: AccountRepository,
-    private val categoryRepo: CategoryRepository,
-    private val currencyRepo: CurrencyRepository,
-    private val syncCoordinator: SyncCoordinator
+    private val syncCoordinator: SyncCoordinator,
+    private val authManager: DriveAuthManager,
+    private val featureFlags: FeatureFlags
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -44,21 +39,16 @@ class SettingsViewModel(
             val lastSync = settings.getLastSyncTime()?.let {
                 SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(it))
             } ?: "Never"
-            _state.update { it.copy(driveFileId = fileId, accessMode = mode, lastSyncDisplay = lastSync) }
-        }
-        viewModelScope.launch {
-            accountRepo.observeAll().collect { accounts ->
-                _state.update { it.copy(accounts = accounts) }
-            }
-        }
-        viewModelScope.launch {
-            categoryRepo.observeAll().collect { categories ->
-                _state.update { it.copy(categories = categories) }
-            }
-        }
-        viewModelScope.launch {
-            currencyRepo.observeAll().collect { currencies ->
-                _state.update { it.copy(currencies = currencies) }
+            val account = authManager.getSignedInAccount()
+            _state.update {
+                it.copy(
+                    driveFileId = fileId,
+                    accessMode = mode,
+                    lastSyncDisplay = lastSync,
+                    isGoogleConnected = account != null,
+                    googleAccountEmail = account?.email,
+                    isGoogleDriveEnabled = featureFlags.googleDrive
+                )
             }
         }
     }
@@ -74,13 +64,19 @@ class SettingsViewModel(
         viewModelScope.launch { syncCoordinator.uploadCurrent() }
     }
 
-    fun onDeleteAccount(id: Long) {
-        viewModelScope.launch { accountRepo.delete(id) }
-    }
-
-    fun onDeleteCategory(id: Long) {
-        viewModelScope.launch {
-            if (!categoryRepo.hasTransactions(id)) categoryRepo.delete(id)
+    fun onGoogleSignInResult(isSuccess: Boolean) {
+        if (isSuccess) {
+            val account = authManager.getSignedInAccount()
+            _state.update {
+                it.copy(isGoogleConnected = true, googleAccountEmail = account?.email)
+            }
         }
     }
+
+    fun onGoogleSignOut() {
+        authManager.signInClient.signOut().addOnCompleteListener {
+            _state.update { it.copy(isGoogleConnected = false, googleAccountEmail = null) }
+        }
+    }
+
 }

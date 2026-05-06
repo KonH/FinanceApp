@@ -4,8 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Run
 
+Always build via `build.ps1` (sets `JAVA_HOME` to Android Studio JBR and writes output to `.tmp\gradle\log.txt`).
+The working directory is always the project root — never use `cd` before commands.
+
+```powershell
+.\build.ps1
+# Then check the log:
+Get-Content .tmp\gradle\log.txt | Select-Object -Last 30
+```
+
 ```bash
-# Assemble debug APK
+# Assemble debug APK (direct, only if JAVA_HOME is already set)
 ./gradlew :androidApp:assembleDebug
 
 # Install on connected device

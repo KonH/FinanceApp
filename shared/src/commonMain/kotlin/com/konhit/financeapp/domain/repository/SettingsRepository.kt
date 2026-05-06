@@ -13,4 +13,7 @@ interface SettingsRepository {
 
     suspend fun getLastSyncTime(): Long?
     suspend fun saveLastSyncTime(epochMillis: Long)
+
+    suspend fun getLocalFilePath(): String?
+    suspend fun saveLocalFilePath(path: String?)
 }

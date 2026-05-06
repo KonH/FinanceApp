@@ -1,24 +1,47 @@
 package com.konhit.financeapp.android.ui.screens.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
 import com.konhit.financeapp.domain.model.AccessMode
+import com.konhit.financeapp.drive.DriveAuthManager
+import org.koin.androidx.compose.get
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(
+    onBack: () -> Unit,
+    onAccountsClick: () -> Unit,
+    onCategoriesClick: () -> Unit,
+    onCurrenciesClick: () -> Unit
+) {
     val viewModel: SettingsViewModel = koinViewModel()
+    val driveAuthManager: DriveAuthManager = get()
     val state by viewModel.state.collectAsState()
+
+    val signInLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            task.getResult(ApiException::class.java)
+            viewModel.onGoogleSignInResult(true)
+        } catch (e: ApiException) {
+            viewModel.onGoogleSignInResult(false)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -32,21 +55,49 @@ fun SettingsScreen(onBack: () -> Unit) {
     ) { padding ->
         LazyColumn(modifier = Modifier.padding(padding)) {
 
+            if (state.isGoogleDriveEnabled) {
+                item {
+                    SectionHeader("Google Drive")
+                    if (state.isGoogleConnected) {
+                        ListItem(
+                            headlineContent = { Text("Connected") },
+                            supportingContent = { Text(state.googleAccountEmail ?: "") },
+                            trailingContent = {
+                                TextButton(onClick = { viewModel.onGoogleSignOut() }) {
+                                    Text("Disconnect")
+                                }
+                            }
+                        )
+                        if (state.driveFileId != null) {
+                            ListItem(
+                                headlineContent = { Text("Last sync") },
+                                supportingContent = { Text(state.lastSyncDisplay) },
+                                trailingContent = {
+                                    IconButton(onClick = { viewModel.onSyncClick() }) {
+                                        Icon(Icons.Default.Sync, "Sync now")
+                                    }
+                                }
+                            )
+                        }
+                    } else {
+                        ListItem(
+                            headlineContent = { Text("Not connected") },
+                            supportingContent = { Text("Connect to sync with Google Drive") },
+                            trailingContent = {
+                                TextButton(onClick = {
+                                    signInLauncher.launch(driveAuthManager.signInClient.signInIntent)
+                                }) {
+                                    Text("Connect")
+                                }
+                            }
+                        )
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                }
+            }
+
             item {
                 SectionHeader("Database")
-                ListItem(
-                    headlineContent = { Text("File ID") },
-                    supportingContent = { Text(state.driveFileId ?: "Not configured") }
-                )
-                ListItem(
-                    headlineContent = { Text("Last sync") },
-                    supportingContent = { Text(state.lastSyncDisplay) },
-                    trailingContent = {
-                        IconButton(onClick = { viewModel.onSyncClick() }) {
-                            Icon(Icons.Default.Sync, "Sync now")
-                        }
-                    }
-                )
                 ListItem(
                     headlineContent = { Text("Access mode") },
                     trailingContent = {
@@ -64,38 +115,19 @@ fun SettingsScreen(onBack: () -> Unit) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 
-            item { SectionHeader("Accounts") }
-            items(state.accounts, key = { it.id }) { account ->
+            item {
+                SectionHeader("Data")
                 ListItem(
-                    headlineContent = { Text(account.name) },
-                    supportingContent = { Text(account.type) },
-                    trailingContent = {
-                        IconButton(onClick = { viewModel.onDeleteAccount(account.id) }) {
-                            Icon(Icons.Default.Delete, "Delete")
-                        }
-                    }
+                    headlineContent = { Text("Accounts") },
+                    modifier = Modifier.clickable(onClick = onAccountsClick)
                 )
-            }
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
-
-            item { SectionHeader("Categories (${state.categories.size})") }
-            items(state.categories.take(20), key = { it.id }) { category ->
                 ListItem(
-                    headlineContent = { Text(category.name) },
-                    trailingContent = {
-                        IconButton(onClick = { viewModel.onDeleteCategory(category.id) }) {
-                            Icon(Icons.Default.Delete, "Delete")
-                        }
-                    }
+                    headlineContent = { Text("Categories") },
+                    modifier = Modifier.clickable(onClick = onCategoriesClick)
                 )
-            }
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
-
-            item { SectionHeader("Currencies (${state.currencies.size})") }
-            items(state.currencies.take(20), key = { it.id }) { currency ->
                 ListItem(
-                    headlineContent = { Text(currency.name) },
-                    supportingContent = { Text(currency.currencySymbol ?: currency.pfxSymbol ?: "") }
+                    headlineContent = { Text("Currencies") },
+                    modifier = Modifier.clickable(onClick = onCurrenciesClick)
                 )
             }
         }

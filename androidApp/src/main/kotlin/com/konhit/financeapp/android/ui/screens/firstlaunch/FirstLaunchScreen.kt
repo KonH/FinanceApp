@@ -15,6 +15,7 @@ import com.google.android.gms.common.api.ApiException
 import com.konhit.financeapp.drive.DriveAuthManager
 import org.koin.androidx.compose.get
 import org.koin.androidx.compose.koinViewModel
+import java.io.File
 
 @Composable
 fun FirstLaunchScreen(onFileReady: () -> Unit) {
@@ -38,6 +39,18 @@ fun FirstLaunchScreen(onFileReady: () -> Unit) {
         }
     }
 
+    val localFileLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            val destFile = File(context.cacheDir, "current.mmb")
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                destFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            viewModel.openLocalFile(destFile, onFileReady)
+        }
+    }
+
     val drivePickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -55,22 +68,39 @@ fun FirstLaunchScreen(onFileReady: () -> Unit) {
         Text("FinanceApp", style = MaterialTheme.typography.headlineLarge)
         Spacer(Modifier.height(48.dp))
 
-        if (!state.isSignedIn) {
-            Button(onClick = {
-                signInLauncher.launch(driveAuthManager.signInClient.signInIntent)
-            }) {
-                Text("Sign in with Google")
-            }
-        } else {
-            Button(onClick = { showCreateDialog = true }, modifier = Modifier.fillMaxWidth()) {
-                Text("Create new file")
-            }
-            Spacer(Modifier.height(16.dp))
-            OutlinedButton(
-                onClick = { /* launch Drive file picker */ },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Open existing file from Drive")
+        Button(
+            onClick = { showCreateDialog = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Create new file")
+        }
+        Spacer(Modifier.height(12.dp))
+        OutlinedButton(
+            onClick = { localFileLauncher.launch(arrayOf("*/*")) },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Open local file")
+        }
+
+        if (state.isGoogleDriveEnabled) {
+            if (!state.isSignedIn) {
+                Spacer(Modifier.height(24.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = { signInLauncher.launch(driveAuthManager.signInClient.signInIntent) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Connect Google Drive")
+                }
+            } else {
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { /* launch Drive file picker */ },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Open file from Drive")
+                }
             }
         }
 

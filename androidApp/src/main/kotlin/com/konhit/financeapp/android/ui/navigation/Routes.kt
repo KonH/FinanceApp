@@ -4,6 +4,9 @@ object Routes {
     const val FIRST_LAUNCH  = "first_launch"
     const val MAIN          = "main"
     const val SETTINGS      = "settings"
+    const val ACCOUNTS      = "accounts"
+    const val CATEGORIES    = "categories"
+    const val CURRENCIES    = "currencies"
     const val ACCOUNT       = "account/{accountId}"
     const val TRANSACTION   = "transaction?accountId={accountId}&transId={transId}"
 

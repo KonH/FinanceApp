@@ -18,6 +18,7 @@ class SettingsRepositoryImpl(
     private val keyAccessMode    = stringPreferencesKey("access_mode")
     private val keyDriveFileId   = stringPreferencesKey("drive_file_id")
     private val keyLastSyncTime  = longPreferencesKey("last_sync_time")
+    private val keyLocalFilePath = stringPreferencesKey("local_file_path")
 
     override fun observeAccessMode(): Flow<AccessMode> =
         dataStore.data.map { prefs ->
@@ -46,5 +47,15 @@ class SettingsRepositoryImpl(
 
     override suspend fun saveLastSyncTime(epochMillis: Long) {
         dataStore.edit { it[keyLastSyncTime] = epochMillis }
+    }
+
+    override suspend fun getLocalFilePath(): String? =
+        dataStore.data.first()[keyLocalFilePath]
+
+    override suspend fun saveLocalFilePath(path: String?) {
+        dataStore.edit { prefs ->
+            if (path != null) prefs[keyLocalFilePath] = path
+            else prefs.remove(keyLocalFilePath)
+        }
     }
 }

@@ -13,6 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import com.konhit.financeapp.android.ui.navigation.AppNavGraph
 import com.konhit.financeapp.android.ui.navigation.Routes
 import com.konhit.financeapp.domain.repository.SettingsRepository
+import com.konhit.financeapp.domain.usecase.OpenFileUseCase
 import com.konhit.financeapp.drive.SyncCoordinator
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
@@ -21,6 +22,7 @@ class MainActivity : ComponentActivity() {
 
     private val settings: SettingsRepository by inject()
     private val syncCoordinator: SyncCoordinator by inject()
+    private val openFile: OpenFileUseCase by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,8 +32,13 @@ class MainActivity : ComponentActivity() {
                 var startDestination by remember { mutableStateOf<String?>(null) }
 
                 LaunchedEffect(Unit) {
-                    val fileId = settings.getDriveFileId()
-                    startDestination = if (fileId == null) Routes.FIRST_LAUNCH else Routes.MAIN
+                    val hasFile = settings.getLocalFilePath() != null
+                    if (hasFile) {
+                        openFile()
+                        startDestination = Routes.MAIN
+                    } else {
+                        startDestination = Routes.FIRST_LAUNCH
+                    }
                 }
 
                 startDestination?.let { dest ->

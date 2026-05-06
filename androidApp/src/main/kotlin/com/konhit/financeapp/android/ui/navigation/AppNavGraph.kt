@@ -7,6 +7,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.konhit.financeapp.android.ui.screens.account.AccountScreen
+import com.konhit.financeapp.android.ui.screens.accounts.AccountsScreen
+import com.konhit.financeapp.android.ui.screens.categories.CategoriesScreen
+import com.konhit.financeapp.android.ui.screens.currencies.CurrenciesScreen
 import com.konhit.financeapp.android.ui.screens.firstlaunch.FirstLaunchScreen
 import com.konhit.financeapp.android.ui.screens.main.MainScreen
 import com.konhit.financeapp.android.ui.screens.settings.SettingsScreen
@@ -34,7 +37,24 @@ fun AppNavGraph(startDestination: String) {
         }
 
         composable(Routes.SETTINGS) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onAccountsClick = { navController.navigate(Routes.ACCOUNTS) },
+                onCategoriesClick = { navController.navigate(Routes.CATEGORIES) },
+                onCurrenciesClick = { navController.navigate(Routes.CURRENCIES) }
+            )
+        }
+
+        composable(Routes.ACCOUNTS) {
+            AccountsScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.CATEGORIES) {
+            CategoriesScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.CURRENCIES) {
+            CurrenciesScreen(onBack = { navController.popBackStack() })
         }
 
         composable(

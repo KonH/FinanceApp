@@ -18,6 +18,7 @@ class SyncCoordinator(
     private val dbFactory: DatabaseFactory,
     private val dbHolder: DatabaseHolder,
     private val settings: SettingsRepository,
+    private val authManager: DriveAuthManager,
     private val cacheDir: File
 ) {
     private val _syncState = MutableStateFlow<SyncState>(SyncState.Idle)
@@ -42,7 +43,7 @@ class SyncCoordinator(
                 }
             }
 
-            openLocalFile(localFile, accessMode)
+            openAndPersistLocalFile(localFile, accessMode)
             settings.saveLastSyncTime(Clock.System.now().toEpochMilliseconds())
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
@@ -50,7 +51,12 @@ class SyncCoordinator(
         }
     }
 
+    suspend fun openLocal(file: File, accessMode: AccessMode) {
+        openAndPersistLocalFile(file, accessMode)
+    }
+
     suspend fun uploadCurrent() {
+        if (!authManager.isSignedIn()) return
         val file = dbHolder.currentFile ?: return
         val fileId = settings.getDriveFileId() ?: return
         _syncState.value = SyncState.Syncing
@@ -68,7 +74,7 @@ class SyncCoordinator(
         try {
             val localFile = File(cacheDir, "current.mmb")
             driveClient.download(fileId, localFile)
-            openLocalFile(localFile, accessMode)
+            openAndPersistLocalFile(localFile, accessMode)
             settings.saveLastSyncTime(Clock.System.now().toEpochMilliseconds())
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
@@ -80,11 +86,10 @@ class SyncCoordinator(
         uploadCurrent()
     }
 
-    private fun openLocalFile(file: File, @Suppress("UNUSED_PARAMETER") accessMode: AccessMode) {
-        // Read-only access mode is enforced at the repository layer (checkWritable()).
-        // The database is always opened read-write at the driver level.
+    private suspend fun openAndPersistLocalFile(file: File, @Suppress("UNUSED_PARAMETER") accessMode: AccessMode) {
         val conn = dbFactory.openExisting(file)
         val payeeId = conn.database.payeeQueries.selectFirst().executeAsOneOrNull() ?: -1L
         dbHolder.open(conn.database, conn.driver, file, payeeId)
+        settings.saveLocalFilePath(file.absolutePath)
     }
 }

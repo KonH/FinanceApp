@@ -17,6 +17,7 @@ import com.konhit.financeapp.domain.repository.TransactionRepository
 import com.konhit.financeapp.domain.usecase.ComputeBalanceUseCase
 import com.konhit.financeapp.domain.usecase.InitialiseFileUseCase
 import com.konhit.financeapp.domain.usecase.OpenFileUseCase
+import com.konhit.financeapp.feature.FeatureFlags
 import com.konhit.financeapp.drive.DriveAuthManager
 import com.konhit.financeapp.drive.DriveConflictDetector
 import com.konhit.financeapp.drive.DriveFileClient
@@ -42,12 +43,13 @@ val sharedModule = module {
     single { DriveConflictDetector() }
     single {
         SyncCoordinator(
-            driveClient = get(),
+            driveClient      = get(),
             conflictDetector = get(),
-            dbFactory = get(),
-            dbHolder = get(),
-            settings = get(),
-            cacheDir = androidContext().cacheDir
+            dbFactory        = get(),
+            dbHolder         = get(),
+            settings         = get(),
+            authManager      = get(),
+            cacheDir         = androidContext().cacheDir
         )
     }
 
@@ -56,7 +58,9 @@ val sharedModule = module {
     single<CategoryRepository>     { CategoryRepositoryImpl(get()) }
     single<CurrencyRepository>     { CurrencyRepositoryImpl(get()) }
 
+    single { FeatureFlags() }
+
     factory { ComputeBalanceUseCase() }
-    factory { InitialiseFileUseCase(get(), get(), get(), get()) }
-    factory { OpenFileUseCase(get(), get()) }
+    factory { InitialiseFileUseCase(get(), get(), get(), get(), get()) }
+    factory { OpenFileUseCase(get(), get(), get()) }
 }
