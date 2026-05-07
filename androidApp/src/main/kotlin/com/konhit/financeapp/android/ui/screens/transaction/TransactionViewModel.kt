@@ -80,8 +80,8 @@ class TransactionViewModel(
     fun onToAccountChanged(id: Long)             = _state.update { it.copy(toAccountId = id) }
     fun onCategorySelected(category: Category)   = _state.update { it.copy(categId = category.id) }
     fun onDateChanged(date: String)              = _state.update { it.copy(transDate = date) }
-    fun onAmountChanged(amount: Double)          = _state.update { it.copy(amount = amount.toDisplayString()) }
-    fun onToAmountChanged(amount: Double)        = _state.update { it.copy(toAmount = amount.toDisplayString()) }
+    fun onAmountChanged(amount: String)          = _state.update { it.copy(amount = amount) }
+    fun onToAmountChanged(amount: String)        = _state.update { it.copy(toAmount = amount) }
     fun onNotesChanged(notes: String)            = _state.update { it.copy(notes = notes) }
 
     fun onSave() {

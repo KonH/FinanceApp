@@ -40,6 +40,30 @@ class CurrencyRepositoryImpl(private val holder: DatabaseHolder) : CurrencyRepos
         }
     }
 
+    override suspend fun insert(currency: Currency) = withContext(Dispatchers.IO) {
+        holder.requireDb().currencyQueries.insert(
+            id            = currency.id,
+            name          = currency.name,
+            currencySymbol = currency.currencySymbol,
+            pfxSymbol     = currency.pfxSymbol,
+            sfxSymbol     = currency.sfxSymbol
+        )
+    }
+
+    override suspend fun update(currency: Currency) = withContext(Dispatchers.IO) {
+        holder.requireDb().currencyQueries.update(
+            id             = currency.id,
+            name           = currency.name,
+            currencySymbol = currency.currencySymbol,
+            pfxSymbol      = currency.pfxSymbol,
+            sfxSymbol      = currency.sfxSymbol
+        )
+    }
+
+    override suspend fun delete(id: Long) = withContext(Dispatchers.IO) {
+        holder.requireDb().currencyQueries.delete(id)
+    }
+
     private fun mapRow(
         id: Long, name: String, pfxSymbol: String?, sfxSymbol: String?,
         decimalPoint: String?, groupSeparator: String?, scale: Long?, currencySymbol: String?

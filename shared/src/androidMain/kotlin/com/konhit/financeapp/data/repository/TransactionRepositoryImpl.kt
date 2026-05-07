@@ -2,6 +2,7 @@ package com.konhit.financeapp.data.repository
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import app.cash.sqldelight.coroutines.mapToOne
 import com.konhit.financeapp.db.DatabaseHolder
 import com.konhit.financeapp.domain.model.AccessMode
 import com.konhit.financeapp.domain.model.Transaction
@@ -11,12 +12,17 @@ import com.konhit.financeapp.domain.repository.TransactionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.withContext
 
 class TransactionRepositoryImpl(
     private val holder: DatabaseHolder,
     private val settings: SettingsRepository
 ) : TransactionRepository {
+
+    override fun observeAnyChange(): Flow<Unit> =
+        holder.requireDb().transactionQueries.countAll()
+            .asFlow().mapToOne(Dispatchers.IO).drop(1).map { }
 
     override fun observeByAccount(accountId: Long): Flow<List<Transaction>> =
         holder.requireDb().transactionQueries

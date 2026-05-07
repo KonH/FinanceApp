@@ -31,6 +31,7 @@ SELECT
     STATUS
 FROM ACCOUNTLIST_V1
 WHERE STATUS != 'Closed'
+  AND ACCOUNTTYPE IN ('Cash', 'Savings', 'Investment')
 ORDER BY ACCOUNTNAME;
 
 selectById:

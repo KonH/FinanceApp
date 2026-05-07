@@ -10,9 +10,14 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.konhit.financeapp.android.ui.util.formatAmount
+import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.Transaction
+import com.konhit.financeapp.domain.model.TransactionType
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -45,6 +50,8 @@ fun AccountScreen(
         )
     }
 
+    val accountCurrency = state.account?.let { state.accountCurrencies[it.currencyId] }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -52,7 +59,7 @@ fun AccountScreen(
                     Column {
                         Text(state.account?.name ?: "")
                         Text(
-                            "%.2f".format(state.account?.balance ?: 0.0),
+                            formatAmount(state.account?.balance ?: 0.0, accountCurrency),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -76,6 +83,8 @@ fun AccountScreen(
             items(state.transactions, key = { it.transId }) { tx ->
                 TransactionRow(
                     transaction = tx,
+                    categories = state.categories,
+                    accountCurrencies = state.accountCurrencies,
                     isReadOnly = state.isReadOnly,
                     onEdit = { onEditTransaction(tx.transId) },
                     onDelete = { transactionToDelete = tx.transId }
@@ -89,16 +98,46 @@ fun AccountScreen(
 @Composable
 private fun TransactionRow(
     transaction: Transaction,
+    categories: Map<Long, String>,
+    accountCurrencies: Map<Long, Currency>,
     isReadOnly: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     ListItem(
-        headlineContent = { Text(transaction.notes ?: "(no notes)") },
+        headlineContent = {
+            Text(categories[transaction.categId] ?: transaction.notes ?: "")
+        },
         supportingContent = { Text(transaction.transDate.substringBefore('T')) },
         trailingContent = {
-            Row {
-                Text("%.2f".format(transaction.transAmount), modifier = Modifier.padding(end = 8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val amountColor = when (transaction.type) {
+                    TransactionType.DEPOSIT    -> Color(0xFF2E7D32)
+                    TransactionType.WITHDRAWAL -> Color(0xFFC62828)
+                    TransactionType.TRANSFER   -> Color(0xFF1565C0)
+                }
+                if (transaction.type == TransactionType.TRANSFER) {
+                    val fromCurrency = accountCurrencies[transaction.accountId]
+                    val toCurrency = accountCurrencies[transaction.toAccountId]
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text(formatAmount(transaction.transAmount, fromCurrency), color = amountColor)
+                        Text(
+                            "→ ${formatAmount(transaction.toTransAmount, toCurrency)}",
+                            color = amountColor,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                } else {
+                    val currency = accountCurrencies[transaction.accountId]
+                    Text(
+                        formatAmount(transaction.transAmount, currency),
+                        color = amountColor,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
                 if (!isReadOnly) {
                     IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit")

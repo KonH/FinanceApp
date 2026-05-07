@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 data class AccountDialogState(
     val id: Long? = null,
     val name: String = "",
-    val type: String = "Checking",
+    val type: String = "Cash",
     val initialBal: String = "0",
     val currencyId: Long = -1L
 )

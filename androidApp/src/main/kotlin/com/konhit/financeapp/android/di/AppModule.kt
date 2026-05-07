@@ -30,6 +30,8 @@ val appModule = module {
         MainViewModel(
             accountRepo     = get(),
             transactionRepo = get(),
+            currencyRepo    = get(),
+            categoryRepo    = get(),
             settings        = get(),
             syncCoordinator = get()
         )
@@ -37,10 +39,12 @@ val appModule = module {
 
     viewModel { (accountId: Long) ->
         AccountViewModel(
-            accountRepo     = get(),
-            transactionRepo = get(),
-            settings        = get(),
-            syncCoordinator = get(),
+            accountRepo      = get(),
+            transactionRepo  = get(),
+            categoryRepo     = get(),
+            currencyRepo     = get(),
+            settings         = get(),
+            syncCoordinator  = get(),
             savedStateHandle = get()
         )
     }
@@ -73,7 +77,7 @@ val appModule = module {
     }
 
     viewModel {
-        CurrenciesViewModel(currencyRepo = get())
+        CurrenciesViewModel(currencyRepo = get(), syncCoordinator = get())
     }
 
     viewModel {

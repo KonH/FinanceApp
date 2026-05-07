@@ -5,8 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.konhit.financeapp.domain.model.Account
 import com.konhit.financeapp.domain.model.AccessMode
+import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.Transaction
 import com.konhit.financeapp.domain.repository.AccountRepository
+import com.konhit.financeapp.domain.repository.CategoryRepository
+import com.konhit.financeapp.domain.repository.CurrencyRepository
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.repository.TransactionRepository
 import com.konhit.financeapp.drive.SyncCoordinator
@@ -16,12 +19,16 @@ import kotlinx.coroutines.launch
 data class AccountState(
     val account: Account? = null,
     val transactions: List<Transaction> = emptyList(),
-    val isReadOnly: Boolean = false
+    val isReadOnly: Boolean = false,
+    val categories: Map<Long, String> = emptyMap(),
+    val accountCurrencies: Map<Long, Currency> = emptyMap()
 )
 
 class AccountViewModel(
     private val accountRepo: AccountRepository,
     private val transactionRepo: TransactionRepository,
+    private val categoryRepo: CategoryRepository,
+    private val currencyRepo: CurrencyRepository,
     private val settings: SettingsRepository,
     private val syncCoordinator: SyncCoordinator,
     savedStateHandle: SavedStateHandle
@@ -39,25 +46,30 @@ class AccountViewModel(
             }
         }
         viewModelScope.launch {
+            val cats = categoryRepo.getAll().associate { it.id to it.name }
+            _state.update { it.copy(categories = cats) }
+        }
+        viewModelScope.launch {
+            val allAccounts = accountRepo.getAll()
+            val allCurrencies = currencyRepo.getAll().associateBy { it.id }
+            val accountCurrencies = allAccounts.associate { acc ->
+                acc.id to (allCurrencies[acc.currencyId] ?: Currency(acc.currencyId, "", null, null, null, null, null, null))
+            }
+            _state.update { it.copy(accountCurrencies = accountCurrencies) }
+        }
+        viewModelScope.launch {
             transactionRepo.observeByAccount(accountId).collect { txs ->
                 _state.update { it.copy(transactions = txs) }
+                val account = accountRepo.getById(accountId)
+                _state.update { it.copy(account = account) }
             }
         }
-        loadAccount()
     }
 
     fun onDeleteTransaction(transId: Long) {
         viewModelScope.launch {
             transactionRepo.delete(transId)
             syncCoordinator.uploadCurrent()
-            loadAccount()
-        }
-    }
-
-    private fun loadAccount() {
-        viewModelScope.launch {
-            val account = accountRepo.getById(accountId)
-            _state.update { it.copy(account = account) }
         }
     }
 }

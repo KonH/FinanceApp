@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.konhit.financeapp.domain.model.Currency
 import org.koin.androidx.compose.koinViewModel
 
-private val accountTypes = listOf("Checking", "Credit Card", "Savings", "Investment", "Cash", "Loan")
+private val accountTypes = listOf("Cash", "Savings", "Investment")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

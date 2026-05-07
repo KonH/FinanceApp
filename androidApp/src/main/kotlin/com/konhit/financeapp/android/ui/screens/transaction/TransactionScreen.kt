@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.konhit.financeapp.android.ui.components.CategoryPickerDialog
-import com.konhit.financeapp.android.ui.components.InlineCalculator
 import com.konhit.financeapp.domain.model.TransactionType
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -30,8 +29,6 @@ fun TransactionScreen(
     )
     val state by viewModel.state.collectAsState()
 
-    var showCalculator by remember { mutableStateOf(false) }
-    var showToCalculator by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.isSaved) {
@@ -65,21 +62,6 @@ fun TransactionScreen(
             )
         }
     ) { padding ->
-        if (showCalculator) {
-            InlineCalculator(
-                onResult = { viewModel.onAmountChanged(it); showCalculator = false },
-                onDismiss = { showCalculator = false }
-            )
-            return@Scaffold
-        }
-        if (showToCalculator) {
-            InlineCalculator(
-                onResult = { viewModel.onToAmountChanged(it); showToCalculator = false },
-                onDismiss = { showToCalculator = false }
-            )
-            return@Scaffold
-        }
-
         Column(
             modifier = Modifier
                 .padding(padding)
@@ -131,43 +113,23 @@ fun TransactionScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Amount (tapping opens calculator)
+            // Amount
             OutlinedTextField(
                 value = state.amount,
-                onValueChange = {},
+                onValueChange = { viewModel.onAmountChanged(it) },
                 label = { Text("Amount") },
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth(),
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                    .also { source ->
-                        LaunchedEffect(source) {
-                            source.interactions.collect {
-                                if (it is androidx.compose.foundation.interaction.PressInteraction.Release) {
-                                    showCalculator = true
-                                }
-                            }
-                        }
-                    }
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth()
             )
 
             // To-amount (transfers only)
             if (state.type == TransactionType.TRANSFER) {
                 OutlinedTextField(
                     value = state.toAmount,
-                    onValueChange = {},
+                    onValueChange = { viewModel.onToAmountChanged(it) },
                     label = { Text("Destination amount") },
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                        .also { source ->
-                            LaunchedEffect(source) {
-                                source.interactions.collect {
-                                    if (it is androidx.compose.foundation.interaction.PressInteraction.Release) {
-                                        showToCalculator = true
-                                    }
-                                }
-                            }
-                        }
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 

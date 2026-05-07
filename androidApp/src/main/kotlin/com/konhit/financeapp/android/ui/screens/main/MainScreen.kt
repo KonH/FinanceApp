@@ -12,8 +12,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.konhit.financeapp.android.ui.util.formatAmount
 import com.konhit.financeapp.domain.model.Account
+import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.SyncState
+import com.konhit.financeapp.domain.model.Transaction
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,7 +28,6 @@ fun MainScreen(
     val viewModel: MainViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
 
-    // Conflict dialog
     val syncState = state.syncState
     if (syncState is SyncState.Conflict) {
         AlertDialog(
@@ -56,7 +58,7 @@ fun MainScreen(
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             SearchBar(
                 query = state.searchQuery,
                 onQueryChange = { viewModel.onSearchQueryChanged(it) },
@@ -64,10 +66,23 @@ fun MainScreen(
             )
 
             if (state.searchQuery.isNotBlank()) {
-                SearchResultsList(results = state.searchResults, isSearching = state.isSearching)
+                SearchResultsList(
+                    results = state.searchResults,
+                    isSearching = state.isSearching,
+                    categories = state.categories,
+                    currencies = state.currencies,
+                    modifier = Modifier.weight(1f)
+                )
             } else {
-                AccountList(accounts = state.accounts, onAccountClick = onAccountClick)
+                AccountList(
+                    accounts = state.accounts,
+                    currencies = state.currencies,
+                    onAccountClick = onAccountClick,
+                    modifier = Modifier.weight(1f)
+                )
             }
+
+            TotalBalanceSection(totals = state.totalsByCurrency)
 
             if (syncState is SyncState.Error) {
                 Text(
@@ -92,44 +107,68 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, modifier: 
 }
 
 @Composable
-private fun AccountList(accounts: List<Account>, onAccountClick: (Long) -> Unit) {
-    LazyColumn {
+private fun AccountList(
+    accounts: List<Account>,
+    currencies: Map<Long, Currency>,
+    onAccountClick: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(modifier = modifier) {
         items(accounts, key = { it.id }) { account ->
-            AccountRow(account = account, onClick = { onAccountClick(account.id) })
+            AccountRow(
+                account = account,
+                currency = currencies[account.currencyId],
+                onClick = { onAccountClick(account.id) }
+            )
             HorizontalDivider()
         }
     }
 }
 
 @Composable
-private fun AccountRow(account: Account, onClick: () -> Unit) {
+private fun AccountRow(account: Account, currency: Currency?, onClick: () -> Unit) {
     ListItem(
         headlineContent = { Text(account.name) },
         supportingContent = { Text(account.type) },
-        trailingContent = { Text("%.2f".format(account.balance)) },
+        trailingContent = { Text(formatAmount(account.balance, currency)) },
         modifier = Modifier.clickable(onClick = onClick)
     )
 }
 
 @Composable
 private fun SearchResultsList(
-    results: List<com.konhit.financeapp.domain.model.Transaction>,
-    isSearching: Boolean
+    results: List<Transaction>,
+    isSearching: Boolean,
+    categories: Map<Long, String>,
+    currencies: Map<Long, Currency>,
+    modifier: Modifier = Modifier
 ) {
     if (isSearching) {
-        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+        Box(modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
         return
     }
-    LazyColumn {
+    LazyColumn(modifier = modifier) {
         items(results, key = { it.transId }) { tx ->
             ListItem(
-                headlineContent = { Text(tx.notes ?: "(no notes)") },
+                headlineContent = { Text(categories[tx.categId] ?: tx.notes ?: "") },
                 supportingContent = { Text(tx.transDate.substringBefore('T')) },
                 trailingContent = { Text("%.2f".format(tx.transAmount)) }
             )
             HorizontalDivider()
+        }
+    }
+}
+
+@Composable
+private fun TotalBalanceSection(totals: List<Pair<Currency, Double>>) {
+    if (totals.isEmpty()) return
+    HorizontalDivider()
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text("Total", style = MaterialTheme.typography.labelMedium)
+        totals.forEach { (currency, total) ->
+            Text(formatAmount(total, currency), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

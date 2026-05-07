@@ -7,4 +7,7 @@ interface CurrencyRepository {
     fun observeAll(): Flow<List<Currency>>
     suspend fun getAll(): List<Currency>
     suspend fun getById(id: Long): Currency?
+    suspend fun insert(currency: Currency)
+    suspend fun update(currency: Currency)
+    suspend fun delete(id: Long)
 }

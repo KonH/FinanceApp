@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.konhit.financeapp.domain.model.Account
 import com.konhit.financeapp.domain.model.AccessMode
+import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.SyncState
 import com.konhit.financeapp.domain.model.Transaction
 import com.konhit.financeapp.domain.repository.AccountRepository
+import com.konhit.financeapp.domain.repository.CategoryRepository
+import com.konhit.financeapp.domain.repository.CurrencyRepository
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.repository.TransactionRepository
 import com.konhit.financeapp.drive.SyncCoordinator
@@ -16,6 +19,9 @@ import kotlinx.coroutines.launch
 
 data class MainState(
     val accounts: List<Account> = emptyList(),
+    val currencies: Map<Long, Currency> = emptyMap(),
+    val totalsByCurrency: List<Pair<Currency, Double>> = emptyList(),
+    val categories: Map<Long, String> = emptyMap(),
     val searchQuery: String = "",
     val searchResults: List<Transaction> = emptyList(),
     val isSearching: Boolean = false,
@@ -27,6 +33,8 @@ data class MainState(
 class MainViewModel(
     private val accountRepo: AccountRepository,
     private val transactionRepo: TransactionRepository,
+    private val currencyRepo: CurrencyRepository,
+    private val categoryRepo: CategoryRepository,
     private val settings: SettingsRepository,
     private val syncCoordinator: SyncCoordinator
 ) : ViewModel() {
@@ -38,9 +46,10 @@ class MainViewModel(
 
     init {
         viewModelScope.launch {
-            accountRepo.observeAll().collect { accounts ->
-                _state.update { it.copy(accounts = accounts) }
-            }
+            accountRepo.observeAll().collect { loadAccounts() }
+        }
+        viewModelScope.launch {
+            transactionRepo.observeAnyChange().collect { loadAccounts() }
         }
         viewModelScope.launch {
             settings.observeAccessMode().collect { mode ->
@@ -65,6 +74,10 @@ class MainViewModel(
                         _state.update { it.copy(searchResults = results, isSearching = false) }
                     }
                 }
+        }
+        viewModelScope.launch {
+            val cats = categoryRepo.getAll().associate { it.id to it.name }
+            _state.update { it.copy(categories = cats) }
         }
         loadAccounts()
     }
@@ -93,7 +106,13 @@ class MainViewModel(
     private fun loadAccounts() {
         viewModelScope.launch {
             val accounts = accountRepo.getAll()
-            _state.update { it.copy(accounts = accounts) }
+            val allCurrencies = currencyRepo.getAll().associateBy { it.id }
+            val totals = accounts
+                .groupBy { it.currencyId }
+                .mapNotNull { (cid, accs) ->
+                    allCurrencies[cid]?.let { it to accs.sumOf { a -> a.balance } }
+                }
+            _state.update { it.copy(accounts = accounts, currencies = allCurrencies, totalsByCurrency = totals) }
         }
     }
 }
