@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "903318049095",
+    "project_id": "financeapp-495616",
+    "storage_bucket": "financeapp-495616.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:903318049095:android:a8481ba3bbd7c4221cfc62",
+        "android_client_info": {
+          "package_name": "com.konhit.financeapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATjsmVv6ZAibM-8ppzQaWTQzlnVEkZIxM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

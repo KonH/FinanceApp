@@ -47,6 +47,18 @@ class DriveFileClient(private val authManager: DriveAuthManager) {
         }
     }
 
+    suspend fun findFileIdByName(name: String): String? = withContext(Dispatchers.IO) {
+        val escaped = name.replace("'", "\\'")
+        buildDrive().files().list()
+            .setQ("name='$escaped' and trashed=false")
+            .setFields("files(id)")
+            .setSpaces("drive")
+            .execute()
+            .files
+            .firstOrNull()
+            ?.id
+    }
+
     suspend fun getRemoteModifiedTime(fileId: String): Instant = withContext(Dispatchers.IO) {
         val file = buildDrive().files().get(fileId)
             .setFields("modifiedTime")

@@ -13,7 +13,7 @@ class DriveAuthManager(private val context: Context) {
     val signInClient: GoogleSignInClient by lazy {
         val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
-            .requestScopes(com.google.android.gms.common.api.Scope(DriveScopes.DRIVE_FILE))
+            .requestScopes(com.google.android.gms.common.api.Scope(DriveScopes.DRIVE))
             .build()
         GoogleSignIn.getClient(context, options)
     }
@@ -24,7 +24,7 @@ class DriveAuthManager(private val context: Context) {
     fun getCredential(): GoogleAccountCredential? {
         val account = getSignedInAccount() ?: return null
         return GoogleAccountCredential
-            .usingOAuth2(context, listOf(DriveScopes.DRIVE_FILE))
+            .usingOAuth2(context, listOf(DriveScopes.DRIVE))
             .also { it.selectedAccount = account.account }
     }
 

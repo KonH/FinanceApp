@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -25,7 +26,8 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onAccountsClick: () -> Unit,
     onCategoriesClick: () -> Unit,
-    onCurrenciesClick: () -> Unit
+    onCurrenciesClick: () -> Unit,
+    onCloseDatabase: () -> Unit
 ) {
     val viewModel: SettingsViewModel = koinViewModel()
     val driveAuthManager: DriveAuthManager = get()
@@ -98,20 +100,53 @@ fun SettingsScreen(
 
             item {
                 SectionHeader("Database")
-                ListItem(
-                    headlineContent = { Text("Access mode") },
-                    trailingContent = {
-                        SingleChoiceSegmentedButtonRow {
-                            AccessMode.entries.forEachIndexed { i, mode ->
-                                SegmentedButton(
-                                    selected = state.accessMode == mode,
-                                    onClick = { viewModel.onAccessModeChanged(mode) },
-                                    shape = SegmentedButtonDefaults.itemShape(i, AccessMode.entries.size)
-                                ) { Text(if (mode == AccessMode.READ_WRITE) "Read-write" else "Read-only") }
-                            }
+                Column(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    val dbFilePath = state.dbFilePath
+                    if (dbFilePath != null) {
+                        Text(
+                            text = state.dbType,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = dbFilePath,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    Text(
+                        text = "Access mode",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        AccessMode.entries.forEachIndexed { i, mode ->
+                            SegmentedButton(
+                                selected = state.accessMode == mode,
+                                onClick = { viewModel.onAccessModeChanged(mode) },
+                                shape = SegmentedButtonDefaults.itemShape(i, AccessMode.entries.size)
+                            ) { Text(if (mode == AccessMode.READ_WRITE) "Read-write" else "Read-only") }
                         }
                     }
-                )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.closeDatabase()
+                            onCloseDatabase()
+                        },
+                        modifier = Modifier.align(Alignment.End),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Close database")
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
 

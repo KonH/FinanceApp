@@ -2,6 +2,7 @@ package com.konhit.financeapp.android.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.konhit.financeapp.db.DatabaseHolder
 import com.konhit.financeapp.domain.model.AccessMode
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.feature.FeatureFlags
@@ -19,14 +20,17 @@ data class SettingsState(
     val lastSyncDisplay: String = "Never",
     val isGoogleConnected: Boolean = false,
     val googleAccountEmail: String? = null,
-    val isGoogleDriveEnabled: Boolean = false
+    val isGoogleDriveEnabled: Boolean = false,
+    val dbFilePath: String? = null,
+    val dbType: String = ""
 )
 
 class SettingsViewModel(
     private val settings: SettingsRepository,
     private val syncCoordinator: SyncCoordinator,
     private val authManager: DriveAuthManager,
-    private val featureFlags: FeatureFlags
+    private val featureFlags: FeatureFlags,
+    private val dbHolder: DatabaseHolder
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -47,7 +51,9 @@ class SettingsViewModel(
                     lastSyncDisplay = lastSync,
                     isGoogleConnected = account != null,
                     googleAccountEmail = account?.email,
-                    isGoogleDriveEnabled = featureFlags.googleDrive
+                    isGoogleDriveEnabled = featureFlags.googleDrive,
+                    dbFilePath = dbHolder.currentFile?.absolutePath,
+                    dbType = if (fileId != null) "Google Drive" else "Local"
                 )
             }
         }
@@ -76,6 +82,14 @@ class SettingsViewModel(
     fun onGoogleSignOut() {
         authManager.signInClient.signOut().addOnCompleteListener {
             _state.update { it.copy(isGoogleConnected = false, googleAccountEmail = null) }
+        }
+    }
+
+    fun closeDatabase() {
+        dbHolder.close()
+        viewModelScope.launch {
+            settings.saveLocalFilePath(null)
+            settings.saveDriveFileId(null)
         }
     }
 

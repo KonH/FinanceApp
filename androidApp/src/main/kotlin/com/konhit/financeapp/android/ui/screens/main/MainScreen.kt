@@ -5,25 +5,27 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.konhit.financeapp.android.ui.util.formatAmount
 import com.konhit.financeapp.domain.model.Account
 import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.SyncState
-import com.konhit.financeapp.domain.model.Transaction
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     onAccountClick: (Long) -> Unit,
-    onSettingsClick: () -> Unit
+    onSettingsClick: () -> Unit,
+    onFilterClick: () -> Unit
 ) {
     val viewModel: MainViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
@@ -48,6 +50,15 @@ fun MainScreen(
             TopAppBar(
                 title = { Text("Accounts") },
                 actions = {
+                    IconButton(onClick = { viewModel.onToggleBalanceVisibility() }) {
+                        Icon(
+                            if (state.balanceVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = if (state.balanceVisible) "Hide balances" else "Show balances"
+                        )
+                    }
+                    IconButton(onClick = onFilterClick) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filter transactions")
+                    }
                     IconButton(onClick = { viewModel.onSyncClick() }) {
                         Icon(Icons.Default.Sync, contentDescription = "Sync")
                     }
@@ -59,30 +70,18 @@ fun MainScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            SearchBar(
-                query = state.searchQuery,
-                onQueryChange = { viewModel.onSearchQueryChanged(it) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+            AccountList(
+                accounts = state.accounts,
+                currencies = state.currencies,
+                balanceVisible = state.balanceVisible,
+                onAccountClick = onAccountClick,
+                modifier = Modifier.weight(1f)
             )
 
-            if (state.searchQuery.isNotBlank()) {
-                SearchResultsList(
-                    results = state.searchResults,
-                    isSearching = state.isSearching,
-                    categories = state.categories,
-                    currencies = state.currencies,
-                    modifier = Modifier.weight(1f)
-                )
-            } else {
-                AccountList(
-                    accounts = state.accounts,
-                    currencies = state.currencies,
-                    onAccountClick = onAccountClick,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            TotalBalanceSection(totals = state.totalsByCurrency)
+            TotalBalanceSection(
+                totals = state.totalsByCurrency,
+                balanceVisible = state.balanceVisible
+            )
 
             if (syncState is SyncState.Error) {
                 Text(
@@ -96,20 +95,10 @@ fun MainScreen(
 }
 
 @Composable
-private fun SearchBar(query: String, onQueryChange: (String) -> Unit, modifier: Modifier = Modifier) {
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQueryChange,
-        placeholder = { Text("Search transactions…") },
-        singleLine = true,
-        modifier = modifier
-    )
-}
-
-@Composable
 private fun AccountList(
     accounts: List<Account>,
     currencies: Map<Long, Currency>,
+    balanceVisible: Boolean,
     onAccountClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -118,6 +107,7 @@ private fun AccountList(
             AccountRow(
                 account = account,
                 currency = currencies[account.currencyId],
+                balanceVisible = balanceVisible,
                 onClick = { onAccountClick(account.id) }
             )
             HorizontalDivider()
@@ -126,49 +116,33 @@ private fun AccountList(
 }
 
 @Composable
-private fun AccountRow(account: Account, currency: Currency?, onClick: () -> Unit) {
+private fun AccountRow(
+    account: Account,
+    currency: Currency?,
+    balanceVisible: Boolean,
+    onClick: () -> Unit
+) {
     ListItem(
         headlineContent = { Text(account.name) },
         supportingContent = { Text(account.type) },
-        trailingContent = { Text(formatAmount(account.balance, currency)) },
+        trailingContent = {
+            Text(if (balanceVisible) formatAmount(account.balance, currency) else "•••")
+        },
         modifier = Modifier.clickable(onClick = onClick)
     )
 }
 
 @Composable
-private fun SearchResultsList(
-    results: List<Transaction>,
-    isSearching: Boolean,
-    categories: Map<Long, String>,
-    currencies: Map<Long, Currency>,
-    modifier: Modifier = Modifier
-) {
-    if (isSearching) {
-        Box(modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-    LazyColumn(modifier = modifier) {
-        items(results, key = { it.transId }) { tx ->
-            ListItem(
-                headlineContent = { Text(categories[tx.categId] ?: tx.notes ?: "") },
-                supportingContent = { Text(tx.transDate.substringBefore('T')) },
-                trailingContent = { Text("%.2f".format(tx.transAmount)) }
-            )
-            HorizontalDivider()
-        }
-    }
-}
-
-@Composable
-private fun TotalBalanceSection(totals: List<Pair<Currency, Double>>) {
+private fun TotalBalanceSection(totals: List<Pair<Currency, Double>>, balanceVisible: Boolean) {
     if (totals.isEmpty()) return
     HorizontalDivider()
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text("Total", style = MaterialTheme.typography.labelMedium)
         totals.forEach { (currency, total) ->
-            Text(formatAmount(total, currency), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                if (balanceVisible) formatAmount(total, currency) else "•••",
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }

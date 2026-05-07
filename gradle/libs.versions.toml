@@ -1,5 +1,6 @@
 [versions]
 kotlin                  = "2.3.21"
+google-services         = "4.4.2"
 agp                     = "8.13.2"
 compose-bom             = "2024.09.00"
 sqldelight              = "2.0.2"
@@ -82,3 +83,4 @@ android-application     = { id = "com.android.application", version.ref = "agp" 
 android-library         = { id = "com.android.library", version.ref = "agp" }
 sqldelight              = { id = "app.cash.sqldelight", version.ref = "sqldelight" }
 compose-compiler        = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-services         = { id = "com.google.gms.google-services", version.ref = "google-services" }

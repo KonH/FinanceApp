@@ -9,8 +9,10 @@ object Routes {
     const val CURRENCIES    = "currencies"
     const val ACCOUNT       = "account/{accountId}"
     const val TRANSACTION   = "transaction?accountId={accountId}&transId={transId}"
+    const val FILTER        = "filter/{accountId}"
 
     fun account(accountId: Long) = "account/$accountId"
     fun transactionAdd(accountId: Long) = "transaction?accountId=$accountId&transId=-1"
     fun transactionEdit(transId: Long) = "transaction?accountId=-1&transId=$transId"
+    fun filter(accountId: Long = -1L) = "filter/$accountId"
 }

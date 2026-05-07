@@ -35,8 +35,13 @@ class SyncCoordinator(
 
             when (val conflict = conflictDetector.check(remoteTime, lastSyncTime)) {
                 is ConflictResult.Conflict -> {
-                    _syncState.value = SyncState.Conflict(conflict.remoteTime, conflict.localSyncTime)
-                    return
+                    if (localFile.exists()) {
+                        openAndPersistLocalFile(localFile, accessMode)
+                        _syncState.value = SyncState.Conflict(conflict.remoteTime, conflict.localSyncTime)
+                        return
+                    }
+                    // No local copy — fall through and download remote
+                    driveClient.download(fileId, localFile)
                 }
                 is ConflictResult.NoConflict -> {
                     driveClient.download(fileId, localFile)
@@ -48,6 +53,7 @@ class SyncCoordinator(
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
             _syncState.value = SyncState.Error(e.message ?: "Sync failed")
+            throw e
         }
     }
 
@@ -80,6 +86,12 @@ class SyncCoordinator(
         } catch (e: Exception) {
             _syncState.value = SyncState.Error(e.message ?: "Sync failed")
         }
+    }
+
+    suspend fun findDriveFileId(fileName: String): String? = try {
+        driveClient.findFileIdByName(fileName)
+    } catch (e: Exception) {
+        null
     }
 
     suspend fun resolveConflictKeepLocal() {

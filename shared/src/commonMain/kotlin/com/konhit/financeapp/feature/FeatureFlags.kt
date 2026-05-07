@@ -1,5 +1,5 @@
 package com.konhit.financeapp.feature
 
 data class FeatureFlags(
-    val googleDrive: Boolean = false
+    val googleDrive: Boolean = true
 )

@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.usecase.InitialiseFileUseCase
-import com.konhit.financeapp.domain.usecase.OpenFileUseCase
 import com.konhit.financeapp.drive.DriveAuthManager
 import com.konhit.financeapp.drive.SyncCoordinator
 import com.konhit.financeapp.feature.FeatureFlags
@@ -24,7 +23,6 @@ data class FirstLaunchState(
 class FirstLaunchViewModel(
     private val authManager: DriveAuthManager,
     private val initialise: InitialiseFileUseCase,
-    private val openFile: OpenFileUseCase,
     private val syncCoordinator: SyncCoordinator,
     private val settings: SettingsRepository,
     private val featureFlags: FeatureFlags,
@@ -41,8 +39,11 @@ class FirstLaunchViewModel(
         )
     }
 
-    fun onSignInResult(isSuccess: Boolean) {
-        _state.value = _state.value.copy(isSignedIn = isSuccess)
+    fun onSignInResult(isSuccess: Boolean, error: String? = null) {
+        _state.value = _state.value.copy(
+            isSignedIn = isSuccess,
+            error = if (!isSuccess) error ?: "Google sign-in failed" else null
+        )
     }
 
     fun createNewFile(fileName: String, onReady: () -> Unit) {
@@ -77,12 +78,16 @@ class FirstLaunchViewModel(
         }
     }
 
-    fun openExistingFile(driveFileId: String, onReady: () -> Unit) {
+    fun openDriveFile(localFile: File, fileName: String?, onReady: () -> Unit) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
-                settings.saveDriveFileId(driveFileId)
-                openFile()
+                val mode = settings.getAccessMode()
+                syncCoordinator.openLocal(localFile, mode)
+                if (fileName != null && authManager.isSignedIn()) {
+                    val driveId = syncCoordinator.findDriveFileId(fileName)
+                    settings.saveDriveFileId(driveId)
+                }
                 onReady()
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = e.message)

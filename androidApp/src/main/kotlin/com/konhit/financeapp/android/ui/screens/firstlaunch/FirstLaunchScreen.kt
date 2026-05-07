@@ -1,6 +1,8 @@
 package com.konhit.financeapp.android.ui.screens.firstlaunch
 
 import android.app.Activity
+import android.content.Intent
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -8,7 +10,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
@@ -23,6 +27,7 @@ fun FirstLaunchScreen(onFileReady: () -> Unit) {
     val driveAuthManager: DriveAuthManager = get()
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var newFileName by remember { mutableStateOf("") }
@@ -35,7 +40,7 @@ fun FirstLaunchScreen(onFileReady: () -> Unit) {
             task.getResult(ApiException::class.java)
             viewModel.onSignInResult(true)
         } catch (e: ApiException) {
-            viewModel.onSignInResult(false)
+            viewModel.onSignInResult(false, "Sign-in failed (code ${e.statusCode})")
         }
     }
 
@@ -55,8 +60,17 @@ fun FirstLaunchScreen(onFileReady: () -> Unit) {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val driveFileId = result.data?.data?.lastPathSegment ?: return@rememberLauncherForActivityResult
-            viewModel.openExistingFile(driveFileId, onFileReady)
+            val uri = result.data?.data ?: return@rememberLauncherForActivityResult
+            val destFile = java.io.File(context.cacheDir, "current.mmb")
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                destFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            val displayName = context.contentResolver.query(
+                uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }
+            viewModel.openDriveFile(destFile, displayName, onFileReady)
         }
     }
 
@@ -96,7 +110,14 @@ fun FirstLaunchScreen(onFileReady: () -> Unit) {
             } else {
                 Spacer(Modifier.height(12.dp))
                 OutlinedButton(
-                    onClick = { /* launch Drive file picker */ },
+                    onClick = {
+                        drivePickerLauncher.launch(
+                            Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                type = "*/*"
+                            }
+                        )
+                    },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Open file from Drive")
@@ -106,7 +127,14 @@ fun FirstLaunchScreen(onFileReady: () -> Unit) {
 
         state.error?.let { err ->
             Spacer(Modifier.height(16.dp))
-            Text(err, color = MaterialTheme.colorScheme.error)
+            Text(
+                text = err.lines().first(),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+            TextButton(onClick = { clipboard.setText(AnnotatedString(err)) }) {
+                Text("Copy full error")
+            }
         }
 
         if (state.isLoading) {

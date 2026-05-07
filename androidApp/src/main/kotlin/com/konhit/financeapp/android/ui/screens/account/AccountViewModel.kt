@@ -3,6 +3,7 @@ package com.konhit.financeapp.android.ui.screens.account
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.konhit.financeapp.android.ui.store.BalanceVisibilityStore
 import com.konhit.financeapp.domain.model.Account
 import com.konhit.financeapp.domain.model.AccessMode
 import com.konhit.financeapp.domain.model.Currency
@@ -25,6 +26,7 @@ data class AccountState(
     val accountCurrencies: Map<Long, Currency> = emptyMap(),
     val selectedDate: LocalDate? = null,
     val balanceAtDate: Double? = null,
+    val balanceVisible: Boolean = true
 )
 
 class AccountViewModel(
@@ -34,6 +36,7 @@ class AccountViewModel(
     private val currencyRepo: CurrencyRepository,
     private val settings: SettingsRepository,
     private val syncCoordinator: SyncCoordinator,
+    private val balanceVisibilityStore: BalanceVisibilityStore,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -46,6 +49,11 @@ class AccountViewModel(
         viewModelScope.launch {
             settings.observeAccessMode().collect { mode ->
                 _state.update { it.copy(isReadOnly = mode == AccessMode.READ_ONLY) }
+            }
+        }
+        viewModelScope.launch {
+            balanceVisibilityStore.isVisible.collect { visible ->
+                _state.update { it.copy(balanceVisible = visible) }
             }
         }
         viewModelScope.launch {

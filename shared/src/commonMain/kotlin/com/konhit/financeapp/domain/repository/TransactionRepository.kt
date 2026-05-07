@@ -5,7 +5,9 @@ import kotlinx.coroutines.flow.Flow
 
 interface TransactionRepository {
     fun observeByAccount(accountId: Long): Flow<List<Transaction>>
+    fun observeAll(): Flow<List<Transaction>>
     fun observeAnyChange(): Flow<Unit>
+    suspend fun getAll(): List<Transaction>
     suspend fun getByAccount(accountId: Long): List<Transaction>
     suspend fun getById(transId: Long): Transaction?
     suspend fun insert(transaction: Transaction)

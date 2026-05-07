@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +30,7 @@ fun AccountScreen(
     accountId: Long,
     onAddTransaction: () -> Unit,
     onEditTransaction: (Long) -> Unit,
+    onFilterClick: () -> Unit,
     onBack: () -> Unit
 ) {
     val viewModel: AccountViewModel = koinViewModel(parameters = { parametersOf(accountId) })
@@ -54,7 +56,8 @@ fun AccountScreen(
     }
 
     val accountCurrency = state.account?.let { state.accountCurrencies[it.currencyId] }
-    val displayBalance = state.balanceAtDate ?: state.account?.balance ?: 0.0
+    val rawBalance = state.balanceAtDate ?: state.account?.balance ?: 0.0
+    val displayBalance = if (state.balanceVisible) formatAmount(rawBalance, accountCurrency) else "•••"
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState()
@@ -82,10 +85,7 @@ fun AccountScreen(
                 title = {
                     Column {
                         Text(state.account?.name ?: "")
-                        Text(
-                            formatAmount(displayBalance, accountCurrency),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Text(displayBalance, style = MaterialTheme.typography.bodyMedium)
                     }
                 },
                 navigationIcon = {
@@ -94,6 +94,9 @@ fun AccountScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onFilterClick) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filter transactions")
+                    }
                     IconButton(onClick = { showDatePicker = true }) {
                         Icon(Icons.Default.CalendarMonth, contentDescription = "Balance at date")
                     }
@@ -108,6 +111,10 @@ fun AccountScreen(
             }
         }
     ) { padding ->
+        val visibleTransactions = state.selectedDate?.let { date ->
+            state.transactions.filter { tx -> tx.transDate.substringBefore('T') <= date.toString() }
+        } ?: state.transactions
+
         LazyColumn(modifier = Modifier.padding(padding)) {
             if (state.selectedDate != null) {
                 item {
@@ -120,7 +127,7 @@ fun AccountScreen(
                     )
                 }
             }
-            items(state.transactions, key = { it.transId }) { tx ->
+            items(visibleTransactions, key = { it.transId }) { tx ->
                 TransactionRow(
                     transaction = tx,
                     categories = state.categories,

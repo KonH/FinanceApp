@@ -10,6 +10,7 @@ import com.konhit.financeapp.android.ui.screens.account.AccountScreen
 import com.konhit.financeapp.android.ui.screens.accounts.AccountsScreen
 import com.konhit.financeapp.android.ui.screens.categories.CategoriesScreen
 import com.konhit.financeapp.android.ui.screens.currencies.CurrenciesScreen
+import com.konhit.financeapp.android.ui.screens.filter.FilterScreen
 import com.konhit.financeapp.android.ui.screens.firstlaunch.FirstLaunchScreen
 import com.konhit.financeapp.android.ui.screens.main.MainScreen
 import com.konhit.financeapp.android.ui.screens.settings.SettingsScreen
@@ -32,7 +33,8 @@ fun AppNavGraph(startDestination: String) {
         composable(Routes.MAIN) {
             MainScreen(
                 onAccountClick = { id -> navController.navigate(Routes.account(id)) },
-                onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+                onSettingsClick = { navController.navigate(Routes.SETTINGS) },
+                onFilterClick = { navController.navigate(Routes.filter()) }
             )
         }
 
@@ -41,7 +43,12 @@ fun AppNavGraph(startDestination: String) {
                 onBack = { navController.popBackStack() },
                 onAccountsClick = { navController.navigate(Routes.ACCOUNTS) },
                 onCategoriesClick = { navController.navigate(Routes.CATEGORIES) },
-                onCurrenciesClick = { navController.navigate(Routes.CURRENCIES) }
+                onCurrenciesClick = { navController.navigate(Routes.CURRENCIES) },
+                onCloseDatabase = {
+                    navController.navigate(Routes.FIRST_LAUNCH) {
+                        popUpTo(Routes.MAIN) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -66,8 +73,16 @@ fun AppNavGraph(startDestination: String) {
                 accountId = accountId,
                 onAddTransaction = { navController.navigate(Routes.transactionAdd(accountId)) },
                 onEditTransaction = { transId -> navController.navigate(Routes.transactionEdit(transId)) },
+                onFilterClick = { navController.navigate(Routes.filter(accountId)) },
                 onBack = { navController.popBackStack() }
             )
+        }
+
+        composable(
+            route = Routes.FILTER,
+            arguments = listOf(navArgument("accountId") { type = NavType.LongType; defaultValue = -1L })
+        ) {
+            FilterScreen(onBack = { navController.popBackStack() })
         }
 
         composable(

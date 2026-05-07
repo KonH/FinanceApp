@@ -20,6 +20,18 @@ class TransactionRepositoryImpl(
     private val settings: SettingsRepository
 ) : TransactionRepository {
 
+    override fun observeAll(): Flow<List<Transaction>> =
+        holder.requireDb().transactionQueries.selectAll()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { rows -> rows.map { row -> mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES) } }
+
+    override suspend fun getAll(): List<Transaction> = withContext(Dispatchers.IO) {
+        holder.requireDb().transactionQueries.selectAll().executeAsList().map { row ->
+            mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES)
+        }
+    }
+
     override fun observeAnyChange(): Flow<Unit> =
         holder.requireDb().transactionQueries.countAll()
             .asFlow().mapToOne(Dispatchers.IO).drop(1).map { }
