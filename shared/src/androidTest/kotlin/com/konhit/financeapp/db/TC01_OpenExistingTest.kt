@@ -45,4 +45,20 @@ class TC01_OpenExistingTest : BaseDbTest() {
             assertEquals(-1L, cat.PARENTID)
         }
     }
+
+    @Test
+    fun categoryHierarchy_subCategoriesExistAndHaveValidParent() {
+        val allCategories = database.categoryQueries.selectAll().executeAsList()
+        val ids = allCategories.map { it.CATEGID }.toSet()
+        val subCategories = allCategories.filter { it.PARENTID != -1L }
+
+        assert(subCategories.isNotEmpty()) {
+            "example.mmb has no subcategories — hierarchy has never been tested"
+        }
+        subCategories.forEach { sub ->
+            assert(sub.PARENTID in ids) {
+                "Subcategory '${sub.CATEGNAME}' has PARENTID=${sub.PARENTID} which does not match any CATEGID"
+            }
+        }
+    }
 }

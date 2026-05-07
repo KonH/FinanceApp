@@ -1,5 +1,6 @@
 package com.konhit.financeapp.drive
 
+import android.util.Log
 import com.konhit.financeapp.db.DatabaseFactory
 import com.konhit.financeapp.db.DatabaseHolder
 import com.konhit.financeapp.domain.model.AccessMode
@@ -52,6 +53,7 @@ class SyncCoordinator(
             settings.saveLastSyncTime(Clock.System.now().toEpochMilliseconds())
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
+            Log.e("SyncCoordinator", "downloadAndOpen failed", e)
             _syncState.value = SyncState.Error(e.message ?: "Sync failed")
             throw e
         }
@@ -67,10 +69,12 @@ class SyncCoordinator(
         val fileId = settings.getDriveFileId() ?: return
         _syncState.value = SyncState.Syncing
         try {
+            dbHolder.checkpoint()
             driveClient.upload(file, fileId)
             settings.saveLastSyncTime(Clock.System.now().toEpochMilliseconds())
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
+            Log.e("SyncCoordinator", "uploadCurrent failed", e)
             _syncState.value = SyncState.Error(e.message ?: "Upload failed")
         }
     }
@@ -84,6 +88,7 @@ class SyncCoordinator(
             settings.saveLastSyncTime(Clock.System.now().toEpochMilliseconds())
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
+            Log.e("SyncCoordinator", "resolveConflictKeepRemote failed", e)
             _syncState.value = SyncState.Error(e.message ?: "Sync failed")
         }
     }

@@ -1,5 +1,6 @@
 package com.konhit.financeapp.db
 
+import app.cash.sqldelight.db.QueryResult
 import app.cash.sqldelight.db.SqlDriver
 import java.io.File
 
@@ -22,6 +23,12 @@ class DatabaseHolder {
         database = db
         currentFile = file
         defaultPayeeId = payeeId
+    }
+
+    fun checkpoint() {
+        // execute() routes through compileStatement/executeUpdateDelete and throws when the SQL
+        // returns rows. wal_checkpoint returns 3 columns, so we use executeQuery (rawQuery path).
+        driver?.executeQuery(null, "PRAGMA wal_checkpoint(TRUNCATE)", { QueryResult.Value(Unit) }, 0, null)
     }
 
     fun close() {
