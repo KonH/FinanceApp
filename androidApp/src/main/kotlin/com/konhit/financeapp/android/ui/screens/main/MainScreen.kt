@@ -70,8 +70,8 @@ fun MainScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            AccountList(
-                accounts = state.accounts,
+            AccountGroupList(
+                groups = state.accountGroups,
                 currencies = state.currencies,
                 balanceVisible = state.balanceVisible,
                 onAccountClick = onAccountClick,
@@ -95,22 +95,37 @@ fun MainScreen(
 }
 
 @Composable
-private fun AccountList(
-    accounts: List<Account>,
+private fun AccountGroupList(
+    groups: List<AccountGroup>,
     currencies: Map<Long, Currency>,
     balanceVisible: Boolean,
     onAccountClick: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(modifier = modifier) {
-        items(accounts, key = { it.id }) { account ->
-            AccountRow(
-                account = account,
-                currency = currencies[account.currencyId],
-                balanceVisible = balanceVisible,
-                onClick = { onAccountClick(account.id) }
-            )
-            HorizontalDivider()
+        groups.forEach { group ->
+            item(key = "header_${group.type}") {
+                ListItem(
+                    headlineContent = {
+                        Text(group.type, style = MaterialTheme.typography.titleSmall)
+                    },
+                    colors = ListItemDefaults.colors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            }
+            items(group.accounts, key = { it.id }) { account ->
+                AccountRow(
+                    account = account,
+                    currency = currencies[account.currencyId],
+                    balanceVisible = balanceVisible,
+                    onClick = { onAccountClick(account.id) }
+                )
+                HorizontalDivider()
+            }
+            item(key = "total_${group.type}") {
+                GroupTotalSection(group.totalsByCurrency, balanceVisible)
+            }
         }
     }
 }
@@ -124,12 +139,30 @@ private fun AccountRow(
 ) {
     ListItem(
         headlineContent = { Text(account.name) },
-        supportingContent = { Text(account.type) },
         trailingContent = {
             Text(if (balanceVisible) formatAmount(account.balance, currency) else "•••")
         },
         modifier = Modifier.clickable(onClick = onClick)
     )
+}
+
+@Composable
+private fun GroupTotalSection(totals: List<Pair<Currency, Double>>, balanceVisible: Boolean) {
+    if (totals.isEmpty()) return
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        totals.forEach { (currency, total) ->
+            Text(
+                if (balanceVisible) formatAmount(total, currency) else "•••",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+    HorizontalDivider()
 }
 
 @Composable

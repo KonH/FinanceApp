@@ -16,8 +16,14 @@ import com.konhit.financeapp.drive.SyncCoordinator
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+data class AccountGroup(
+    val type: String,
+    val accounts: List<Account>,
+    val totalsByCurrency: List<Pair<Currency, Double>>
+)
+
 data class MainState(
-    val accounts: List<Account> = emptyList(),
+    val accountGroups: List<AccountGroup> = emptyList(),
     val currencies: Map<Long, Currency> = emptyMap(),
     val totalsByCurrency: List<Pair<Currency, Double>> = emptyList(),
     val syncState: SyncState = SyncState.Idle,
@@ -87,12 +93,22 @@ class MainViewModel(
         viewModelScope.launch {
             val accounts = accountRepo.getAll()
             val allCurrencies = currencyRepo.getAll().associateBy { it.id }
+            val groups = accounts
+                .groupBy { it.type }
+                .map { (type, accs) ->
+                    val groupTotals = accs
+                        .groupBy { it.currencyId }
+                        .mapNotNull { (cid, grouped) ->
+                            allCurrencies[cid]?.let { it to grouped.sumOf { a -> a.balance } }
+                        }
+                    AccountGroup(type, accs, groupTotals)
+                }
             val totals = accounts
                 .groupBy { it.currencyId }
                 .mapNotNull { (cid, accs) ->
                     allCurrencies[cid]?.let { it to accs.sumOf { a -> a.balance } }
                 }
-            _state.update { it.copy(accounts = accounts, currencies = allCurrencies, totalsByCurrency = totals) }
+            _state.update { it.copy(accountGroups = groups, currencies = allCurrencies, totalsByCurrency = totals) }
         }
     }
 }
