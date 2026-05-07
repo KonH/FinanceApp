@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
@@ -32,6 +34,7 @@ fun AccountScreen(
     val viewModel: AccountViewModel = koinViewModel(parameters = { parametersOf(accountId) })
     val state by viewModel.state.collectAsState()
     var transactionToDelete by remember { mutableStateOf<Long?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     transactionToDelete?.let { transId ->
         AlertDialog(
@@ -51,6 +54,27 @@ fun AccountScreen(
     }
 
     val accountCurrency = state.account?.let { state.accountCurrencies[it.currencyId] }
+    val displayBalance = state.balanceAtDate ?: state.account?.balance ?: 0.0
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val date = java.time.Instant.ofEpochMilli(millis)
+                            .atZone(java.time.ZoneOffset.UTC).toLocalDate()
+                        viewModel.onSelectDate(date)
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) { DatePicker(state = datePickerState) }
+    }
 
     Scaffold(
         topBar = {
@@ -59,7 +83,7 @@ fun AccountScreen(
                     Column {
                         Text(state.account?.name ?: "")
                         Text(
-                            formatAmount(state.account?.balance ?: 0.0, accountCurrency),
+                            formatAmount(displayBalance, accountCurrency),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -67,6 +91,11 @@ fun AccountScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = "Balance at date")
                     }
                 }
             )
@@ -80,6 +109,17 @@ fun AccountScreen(
         }
     ) { padding ->
         LazyColumn(modifier = Modifier.padding(padding)) {
+            if (state.selectedDate != null) {
+                item {
+                    FilterChip(
+                        selected = true,
+                        onClick = { viewModel.onClearDate() },
+                        label = { Text("As of ${state.selectedDate}") },
+                        trailingIcon = { Icon(Icons.Default.Close, contentDescription = "Clear date") },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                }
+            }
             items(state.transactions, key = { it.transId }) { tx ->
                 TransactionRow(
                     transaction = tx,

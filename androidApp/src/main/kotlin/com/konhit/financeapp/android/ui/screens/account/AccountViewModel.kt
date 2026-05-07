@@ -15,13 +15,16 @@ import com.konhit.financeapp.domain.repository.TransactionRepository
 import com.konhit.financeapp.drive.SyncCoordinator
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 data class AccountState(
     val account: Account? = null,
     val transactions: List<Transaction> = emptyList(),
     val isReadOnly: Boolean = false,
     val categories: Map<Long, String> = emptyMap(),
-    val accountCurrencies: Map<Long, Currency> = emptyMap()
+    val accountCurrencies: Map<Long, Currency> = emptyMap(),
+    val selectedDate: LocalDate? = null,
+    val balanceAtDate: Double? = null,
 )
 
 class AccountViewModel(
@@ -71,5 +74,16 @@ class AccountViewModel(
             transactionRepo.delete(transId)
             syncCoordinator.uploadCurrent()
         }
+    }
+
+    fun onSelectDate(date: LocalDate) {
+        viewModelScope.launch {
+            val bal = accountRepo.getBalanceAtDate(accountId, date.toString())
+            _state.update { it.copy(selectedDate = date, balanceAtDate = bal) }
+        }
+    }
+
+    fun onClearDate() {
+        _state.update { it.copy(selectedDate = null, balanceAtDate = null) }
     }
 }

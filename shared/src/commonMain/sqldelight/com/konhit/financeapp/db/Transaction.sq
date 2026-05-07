@@ -82,6 +82,32 @@ SELECT
 FROM ACCOUNTLIST_V1 a
 WHERE a.ACCOUNTID = :accountId;
 
+balanceComponentsAtDate:
+SELECT
+    a.INITIALBAL AS initialBal,
+    COALESCE((
+        SELECT SUM(TRANSAMOUNT) FROM CHECKINGACCOUNT_V1
+        WHERE ACCOUNTID = :accountId AND TRANSCODE = 'Deposit'
+          AND DELETEDTIME IS NULL AND substr(TRANSDATE, 1, 10) <= :date
+    ), 0) AS totalDeposits,
+    COALESCE((
+        SELECT SUM(TRANSAMOUNT) FROM CHECKINGACCOUNT_V1
+        WHERE ACCOUNTID = :accountId AND TRANSCODE = 'Withdrawal'
+          AND DELETEDTIME IS NULL AND substr(TRANSDATE, 1, 10) <= :date
+    ), 0) AS totalWithdrawals,
+    COALESCE((
+        SELECT SUM(TOTRANSAMOUNT) FROM CHECKINGACCOUNT_V1
+        WHERE TOACCOUNTID = :accountId AND TRANSCODE = 'Transfer'
+          AND DELETEDTIME IS NULL AND substr(TRANSDATE, 1, 10) <= :date
+    ), 0) AS transfersIn,
+    COALESCE((
+        SELECT SUM(TRANSAMOUNT) FROM CHECKINGACCOUNT_V1
+        WHERE ACCOUNTID = :accountId AND TRANSCODE = 'Transfer'
+          AND DELETEDTIME IS NULL AND substr(TRANSDATE, 1, 10) <= :date
+    ), 0) AS transfersOut
+FROM ACCOUNTLIST_V1 a
+WHERE a.ACCOUNTID = :accountId;
+
 countAll:
 SELECT COUNT(*) FROM CHECKINGACCOUNT_V1 WHERE DELETEDTIME IS NULL;
 

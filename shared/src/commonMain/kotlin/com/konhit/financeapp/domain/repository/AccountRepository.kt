@@ -8,6 +8,7 @@ interface AccountRepository {
     suspend fun getAll(): List<Account>
     suspend fun getById(id: Long): Account?
     suspend fun getBalance(id: Long): Double
+    suspend fun getBalanceAtDate(id: Long, date: String): Double
     suspend fun insert(account: Account)
     suspend fun update(account: Account)
     suspend fun delete(id: Long)

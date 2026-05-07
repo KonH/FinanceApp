@@ -66,6 +66,11 @@ class AccountRepositoryImpl(
         computeBalance(c.initialBal, c.totalDeposits, c.totalWithdrawals, c.transfersIn, c.transfersOut)
     }
 
+    override suspend fun getBalanceAtDate(id: Long, date: String): Double = withContext(Dispatchers.IO) {
+        val c = holder.requireDb().transactionQueries.balanceComponentsAtDate(id, date).executeAsOne()
+        computeBalance(c.initialBal, c.totalDeposits, c.totalWithdrawals, c.transfersIn, c.transfersOut)
+    }
+
     override suspend fun insert(account: Account) = withContext(Dispatchers.IO) {
         holder.requireDb().accountListQueries.insert(
             accountId  = account.id,
