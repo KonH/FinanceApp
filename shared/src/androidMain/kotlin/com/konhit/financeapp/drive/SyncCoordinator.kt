@@ -9,7 +9,6 @@ import com.konhit.financeapp.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import java.io.File
 
@@ -50,7 +49,7 @@ class SyncCoordinator(
             }
 
             openAndPersistLocalFile(localFile, accessMode)
-            settings.saveLastSyncTime(Clock.System.now().toEpochMilliseconds())
+            settings.saveLastSyncTime(remoteTime.toEpochMilliseconds())
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
             Log.e("SyncCoordinator", "downloadAndOpen failed", e)
@@ -70,8 +69,8 @@ class SyncCoordinator(
         _syncState.value = SyncState.Syncing
         try {
             dbHolder.checkpoint()
-            driveClient.upload(file, fileId)
-            settings.saveLastSyncTime(Clock.System.now().toEpochMilliseconds())
+            val (_, uploadedTime) = driveClient.upload(file, fileId)
+            settings.saveLastSyncTime(uploadedTime.toEpochMilliseconds())
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
             Log.e("SyncCoordinator", "uploadCurrent failed", e)
@@ -83,9 +82,10 @@ class SyncCoordinator(
         _syncState.value = SyncState.Syncing
         try {
             val localFile = File(cacheDir, "current.mmb")
+            val remoteTime = driveClient.getRemoteModifiedTime(fileId)
             driveClient.download(fileId, localFile)
             openAndPersistLocalFile(localFile, accessMode)
-            settings.saveLastSyncTime(Clock.System.now().toEpochMilliseconds())
+            settings.saveLastSyncTime(remoteTime.toEpochMilliseconds())
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
             Log.e("SyncCoordinator", "resolveConflictKeepRemote failed", e)

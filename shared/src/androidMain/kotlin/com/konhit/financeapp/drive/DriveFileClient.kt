@@ -32,18 +32,20 @@ class DriveFileClient(private val authManager: DriveAuthManager) {
             }
     }
 
-    suspend fun upload(srcFile: File, fileId: String?): String = withContext(Dispatchers.IO) {
+    suspend fun upload(srcFile: File, fileId: String?): Pair<String, Instant> = withContext(Dispatchers.IO) {
         val drive = buildDrive()
         val mediaContent = FileContent("application/octet-stream", srcFile)
         if (fileId == null) {
             val metadata = DriveFile().setName(srcFile.name)
-            drive.files().create(metadata, mediaContent)
-                .setFields("id")
+            val result = drive.files().create(metadata, mediaContent)
+                .setFields("id,modifiedTime")
                 .execute()
-                .id
+            result.id to Instant.fromEpochMilliseconds(result.modifiedTime.value)
         } else {
-            drive.files().update(fileId, DriveFile(), mediaContent).execute()
-            fileId
+            val result = drive.files().update(fileId, DriveFile(), mediaContent)
+                .setFields("modifiedTime")
+                .execute()
+            fileId to Instant.fromEpochMilliseconds(result.modifiedTime.value)
         }
     }
 

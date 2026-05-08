@@ -5,8 +5,8 @@ import com.konhit.financeapp.db.DatabaseHolder
 import com.konhit.financeapp.drive.DriveAuthManager
 import com.konhit.financeapp.drive.DriveFileClient
 import com.konhit.financeapp.domain.repository.SettingsRepository
-import kotlinx.datetime.Clock
 import java.io.File
+import kotlinx.datetime.Clock
 
 class InitialiseFileUseCase(
     private val dbFactory: DatabaseFactory,
@@ -32,9 +32,9 @@ class InitialiseFileUseCase(
         settings.saveLocalFilePath(localFile.absolutePath)
 
         if (authManager.isSignedIn()) {
-            val fileId = driveClient.upload(localFile, null)
+            val (fileId, uploadedTime) = driveClient.upload(localFile, null)
             settings.saveDriveFileId(fileId)
-            settings.saveLastSyncTime(Clock.System.now().toEpochMilliseconds())
+            settings.saveLastSyncTime(uploadedTime.toEpochMilliseconds())
         }
     }
 }
