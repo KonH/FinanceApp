@@ -24,10 +24,16 @@ fun CategoryPickerDialog(
 ) {
     val roots = remember(categories) { categories.toTree() }
     var expandedIds by remember { mutableStateOf(setOf<Long>()) }
+    var searchQuery by remember { mutableStateOf("") }
 
-    val flatList = remember(roots, expandedIds) {
-        roots.flatMap { root ->
-            root.flattenFiltered(expandedIds)
+    val flatList = remember(roots, expandedIds, searchQuery) {
+        if (searchQuery.isBlank()) {
+            roots.flatMap { root -> root.flattenFiltered(expandedIds) }
+        } else {
+            val q = searchQuery.trim().lowercase()
+            categories
+                .filter { it.name.lowercase().contains(q) }
+                .map { cat -> roots.findNode(cat.id)!! to 0 }
         }
     }
 
@@ -35,20 +41,31 @@ fun CategoryPickerDialog(
         onDismissRequest = onDismiss,
         title = { Text("Select category") },
         text = {
-            LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
-                items(flatList, key = { it.first.category.id }) { (node, depth) ->
-                    CategoryRow(
-                        node = node,
-                        depth = depth,
-                        isExpanded = node.category.id in expandedIds,
-                        onToggle = {
-                            expandedIds = if (node.category.id in expandedIds)
-                                expandedIds - node.category.id
-                            else
-                                expandedIds + node.category.id
-                        },
-                        onSelect = { onSelect(node.category) }
-                    )
+            Column {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
+                    items(flatList, key = { it.first.category.id }) { (node, depth) ->
+                        CategoryRow(
+                            node = node,
+                            depth = depth,
+                            isExpanded = node.category.id in expandedIds,
+                            showToggle = searchQuery.isBlank(),
+                            onToggle = {
+                                expandedIds = if (node.category.id in expandedIds)
+                                    expandedIds - node.category.id
+                                else
+                                    expandedIds + node.category.id
+                            },
+                            onSelect = { onSelect(node.category) }
+                        )
+                    }
                 }
             }
         },
@@ -64,10 +81,11 @@ private fun CategoryRow(
     node: CategoryNode,
     depth: Int,
     isExpanded: Boolean,
+    showToggle: Boolean,
     onToggle: () -> Unit,
     onSelect: () -> Unit
 ) {
-    val hasChildren = node.children.isNotEmpty()
+    val hasChildren = node.children.isNotEmpty() && showToggle
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -86,6 +104,14 @@ private fun CategoryRow(
         Spacer(Modifier.width(4.dp))
         Text(node.category.name)
     }
+}
+
+private fun List<CategoryNode>.findNode(id: Long): CategoryNode? {
+    for (node in this) {
+        if (node.category.id == id) return node
+        node.children.findNode(id)?.let { return it }
+    }
+    return null
 }
 
 private fun CategoryNode.flattenFiltered(expandedIds: Set<Long>): List<Pair<CategoryNode, Int>> {
