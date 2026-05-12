@@ -29,7 +29,8 @@ data class TransactionFormState(
     val notes: String = "",
     val isSaving: Boolean = false,
     val error: String? = null,
-    val isSaved: Boolean = false
+    val isSaved: Boolean = false,
+    val showZeroToAmountConfirm: Boolean = false
 )
 
 class TransactionViewModel(
@@ -75,6 +76,13 @@ class TransactionViewModel(
         }
     }
 
+    fun onConfirmZeroToAmount() {
+        _state.update { it.copy(showZeroToAmountConfirm = false) }
+        onSave(skipZeroToAmountCheck = true)
+    }
+
+    fun onDismissZeroToAmountConfirm() = _state.update { it.copy(showZeroToAmountConfirm = false) }
+
     fun onTypeChanged(type: TransactionType)      = _state.update { it.copy(type = type) }
     fun onAccountChanged(id: Long)               = _state.update { it.copy(accountId = id) }
     fun onToAccountChanged(id: Long)             = _state.update { it.copy(toAccountId = id) }
@@ -84,7 +92,7 @@ class TransactionViewModel(
     fun onToAmountChanged(amount: String)        = _state.update { it.copy(toAmount = amount) }
     fun onNotesChanged(notes: String)            = _state.update { it.copy(notes = notes) }
 
-    fun onSave() {
+    fun onSave(skipZeroToAmountCheck: Boolean = false) {
         viewModelScope.launch {
             _state.update { it.copy(isSaving = true, error = null) }
             try {
@@ -96,6 +104,11 @@ class TransactionViewModel(
                 val toAccountId = if (s.type == TransactionType.TRANSFER) {
                     s.toAccountId ?: error("To-account required for transfer")
                 } else -1L
+
+                if (s.type == TransactionType.TRANSFER && toAmount == 0.0 && !skipZeroToAmountCheck) {
+                    _state.update { it.copy(isSaving = false, showZeroToAmountConfirm = true) }
+                    return@launch
+                }
 
                 val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
                 val tx = Transaction(

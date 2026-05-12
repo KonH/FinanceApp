@@ -35,6 +35,20 @@ fun TransactionScreen(
         if (state.isSaved) onSaved()
     }
 
+    if (state.showZeroToAmountConfirm) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onDismissZeroToAmountConfirm() },
+            title = { Text("Zero destination amount") },
+            text = { Text("The destination amount is 0. Save transfer anyway?") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.onConfirmZeroToAmount() }) { Text("Save anyway") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.onDismissZeroToAmountConfirm() }) { Text("Cancel") }
+            }
+        )
+    }
+
     if (showCategoryPicker) {
         CategoryPickerDialog(
             categories = state.categories,
@@ -66,6 +80,7 @@ fun TransactionScreen(
             modifier = Modifier
                 .padding(padding)
                 .padding(16.dp)
+                .imePadding()
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
