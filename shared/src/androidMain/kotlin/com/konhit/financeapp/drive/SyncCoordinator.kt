@@ -26,14 +26,20 @@ class SyncCoordinator(
 
     suspend fun downloadAndOpen(fileId: String, accessMode: AccessMode) {
         _syncState.value = SyncState.Syncing
+        val localFile = File(cacheDir, "current.mmb")
         try {
-            val localFile = File(cacheDir, "current.mmb")
-
             val remoteTime = driveClient.getRemoteModifiedTime(fileId)
             val lastSyncMs = settings.getLastSyncTime()
             val lastSyncTime = lastSyncMs?.let { Instant.fromEpochMilliseconds(it) }
 
-            when (val conflict = conflictDetector.check(remoteTime, lastSyncTime)) {
+            // Force conflict when local has unuploaded changes so they are never silently overwritten
+            val conflict = if (settings.getPendingUpload() && localFile.exists()) {
+                ConflictResult.Conflict(remoteTime, lastSyncTime ?: remoteTime)
+            } else {
+                conflictDetector.check(remoteTime, lastSyncTime)
+            }
+
+            when (conflict) {
                 is ConflictResult.Conflict -> {
                     if (localFile.exists()) {
                         openAndPersistLocalFile(localFile, accessMode)
@@ -50,11 +56,17 @@ class SyncCoordinator(
 
             openAndPersistLocalFile(localFile, accessMode)
             settings.saveLastSyncTime(remoteTime.toEpochMilliseconds())
+            settings.savePendingUpload(false)
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
             Log.e("SyncCoordinator", "downloadAndOpen failed", e)
-            _syncState.value = SyncState.Error(e.message ?: "Sync failed")
-            throw e
+            if (localFile.exists()) {
+                openAndPersistLocalFile(localFile, accessMode)
+                _syncState.value = SyncState.PendingSync
+            } else {
+                _syncState.value = SyncState.Error(e.message ?: "Sync failed")
+                throw e
+            }
         }
     }
 
@@ -71,10 +83,12 @@ class SyncCoordinator(
             dbHolder.checkpoint()
             val (_, uploadedTime) = driveClient.upload(file, fileId)
             settings.saveLastSyncTime(uploadedTime.toEpochMilliseconds())
+            settings.savePendingUpload(false)
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
             Log.e("SyncCoordinator", "uploadCurrent failed", e)
-            _syncState.value = SyncState.Error(e.message ?: "Upload failed")
+            settings.savePendingUpload(true)
+            _syncState.value = SyncState.PendingSync
         }
     }
 
@@ -86,6 +100,7 @@ class SyncCoordinator(
             driveClient.download(fileId, localFile)
             openAndPersistLocalFile(localFile, accessMode)
             settings.saveLastSyncTime(remoteTime.toEpochMilliseconds())
+            settings.savePendingUpload(false)
             _syncState.value = SyncState.Idle
         } catch (e: Exception) {
             Log.e("SyncCoordinator", "resolveConflictKeepRemote failed", e)

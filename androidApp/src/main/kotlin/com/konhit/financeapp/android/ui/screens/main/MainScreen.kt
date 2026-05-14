@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.konhit.financeapp.android.ui.util.formatAmount
 import com.konhit.financeapp.domain.model.Account
@@ -60,7 +61,14 @@ fun MainScreen(
                         Icon(Icons.Default.FilterList, contentDescription = "Filter transactions")
                     }
                     IconButton(onClick = { viewModel.onSyncClick() }) {
-                        Icon(Icons.Default.Sync, contentDescription = "Sync")
+                        Icon(
+                            Icons.Default.Sync,
+                            contentDescription = "Sync",
+                            tint = if (syncState is SyncState.PendingSync)
+                                Color(0xFFF59E0B)
+                            else
+                                LocalContentColor.current
+                        )
                     }
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")

@@ -34,8 +34,13 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     val hasFile = settings.getLocalFilePath() != null
                     if (hasFile) {
-                        openFile()
-                        startDestination = Routes.MAIN
+                        try {
+                            openFile()
+                            startDestination = Routes.MAIN
+                        } catch (e: Exception) {
+                            // No local cache available and network unreachable — go to first launch
+                            startDestination = Routes.FIRST_LAUNCH
+                        }
                     } else {
                         startDestination = Routes.FIRST_LAUNCH
                     }

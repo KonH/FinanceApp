@@ -16,4 +16,7 @@ interface SettingsRepository {
 
     suspend fun getLocalFilePath(): String?
     suspend fun saveLocalFilePath(path: String?)
+
+    suspend fun getPendingUpload(): Boolean
+    suspend fun savePendingUpload(pending: Boolean)
 }
