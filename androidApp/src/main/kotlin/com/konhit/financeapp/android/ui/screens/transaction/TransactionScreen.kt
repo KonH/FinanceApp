@@ -13,6 +13,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.konhit.financeapp.android.ui.components.CategoryPickerDialog
 import com.konhit.financeapp.domain.model.TransactionType
+import com.konhit.financeapp.domain.model.buildPath
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -30,6 +31,7 @@ fun TransactionScreen(
     val state by viewModel.state.collectAsState()
 
     var showCategoryPicker by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) onSaved()
@@ -47,6 +49,34 @@ fun TransactionScreen(
                 TextButton(onClick = { viewModel.onDismissZeroToAmountConfirm() }) { Text("Cancel") }
             }
         )
+    }
+
+    if (showDatePicker) {
+        val initialMillis = remember(state.transDate) {
+            val datePart = state.transDate.substringBefore('T')
+            runCatching {
+                java.time.LocalDate.parse(datePart)
+                    .atStartOfDay(java.time.ZoneOffset.UTC)
+                    .toInstant().toEpochMilli()
+            }.getOrNull()
+        }
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val date = java.time.Instant.ofEpochMilli(millis)
+                            .atZone(java.time.ZoneOffset.UTC).toLocalDate()
+                        viewModel.onDateChanged("${date}T00:00:00")
+                    }
+                    showDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) { DatePicker(state = datePickerState) }
     }
 
     if (showCategoryPicker) {
@@ -114,19 +144,18 @@ fun TransactionScreen(
             }
 
             // Category
-            val selectedCat = state.categories.find { it.id == state.categId }
+            val categoryLabel = state.categId?.let { state.categories.buildPath(it) }
+                ?.takeIf { it.isNotEmpty() } ?: "Select category"
             OutlinedButton(
                 onClick = { showCategoryPicker = true },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text(selectedCat?.name ?: "Select category") }
+            ) { Text(categoryLabel) }
 
             // Date
-            OutlinedTextField(
-                value = state.transDate.substringBefore('T'),
-                onValueChange = { viewModel.onDateChanged("${it}T00:00:00") },
-                label = { Text("Date (YYYY-MM-DD)") },
+            OutlinedButton(
+                onClick = { showDatePicker = true },
                 modifier = Modifier.fillMaxWidth()
-            )
+            ) { Text(state.transDate.substringBefore('T')) }
 
             // Amount
             OutlinedTextField(

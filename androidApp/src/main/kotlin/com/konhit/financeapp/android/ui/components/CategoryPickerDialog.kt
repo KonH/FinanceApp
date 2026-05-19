@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.konhit.financeapp.domain.model.Category
 import com.konhit.financeapp.domain.model.CategoryNode
+import com.konhit.financeapp.domain.model.buildPath
 import com.konhit.financeapp.domain.model.flattenWithDepth
 import com.konhit.financeapp.domain.model.toTree
 
@@ -36,6 +37,7 @@ fun CategoryPickerDialog(
                 .map { cat -> roots.findNode(cat.id)!! to 0 }
         }
     }
+    val isSearching = searchQuery.isNotBlank()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -52,11 +54,14 @@ fun CategoryPickerDialog(
                 Spacer(Modifier.height(8.dp))
                 LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
                     items(flatList, key = { it.first.category.id }) { (node, depth) ->
+                        val label = if (isSearching) categories.buildPath(node.category.id)
+                                    else node.category.name
                         CategoryRow(
+                            label = label,
                             node = node,
                             depth = depth,
                             isExpanded = node.category.id in expandedIds,
-                            showToggle = searchQuery.isBlank(),
+                            showToggle = !isSearching,
                             onToggle = {
                                 expandedIds = if (node.category.id in expandedIds)
                                     expandedIds - node.category.id
@@ -78,6 +83,7 @@ fun CategoryPickerDialog(
 
 @Composable
 private fun CategoryRow(
+    label: String,
     node: CategoryNode,
     depth: Int,
     isExpanded: Boolean,
@@ -102,7 +108,7 @@ private fun CategoryRow(
             Spacer(Modifier.size(20.dp))
         }
         Spacer(Modifier.width(4.dp))
-        Text(node.category.name)
+        Text(label)
     }
 }
 

@@ -8,6 +8,7 @@ import com.konhit.financeapp.domain.model.Account
 import com.konhit.financeapp.domain.model.AccessMode
 import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.Transaction
+import com.konhit.financeapp.domain.model.buildPath
 import com.konhit.financeapp.domain.repository.AccountRepository
 import com.konhit.financeapp.domain.repository.CategoryRepository
 import com.konhit.financeapp.domain.repository.CurrencyRepository
@@ -57,7 +58,8 @@ class AccountViewModel(
             }
         }
         viewModelScope.launch {
-            val cats = categoryRepo.getAll().associate { it.id to it.name }
+            val allCats = categoryRepo.getAll()
+            val cats = allCats.associate { it.id to allCats.buildPath(it.id) }
             _state.update { it.copy(categories = cats) }
         }
         viewModelScope.launch {

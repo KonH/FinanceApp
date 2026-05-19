@@ -20,3 +20,14 @@ fun List<Category>.toTree(): List<CategoryNode> {
 
 fun CategoryNode.flattenWithDepth(depth: Int = 0): List<Pair<CategoryNode, Int>> =
     listOf(this to depth) + children.flatMap { it.flattenWithDepth(depth + 1) }
+
+fun List<Category>.buildPath(id: Long): String {
+    val byId = associateBy { it.id }
+    val parts = mutableListOf<String>()
+    var cur = byId[id]
+    while (cur != null) {
+        parts.add(0, cur.name)
+        cur = if (cur.parentId == -1L) null else byId[cur.parentId]
+    }
+    return parts.joinToString("/")
+}
