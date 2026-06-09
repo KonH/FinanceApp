@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.konhit.financeapp.db.DatabaseHolder
 import com.konhit.financeapp.domain.model.AccessMode
+import com.konhit.financeapp.domain.model.Category
+import com.konhit.financeapp.domain.model.TransactionType
+import com.konhit.financeapp.domain.repository.CategoryRepository
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.feature.FeatureFlags
 import com.konhit.financeapp.drive.DriveAuthManager
@@ -22,7 +25,10 @@ data class SettingsState(
     val googleAccountEmail: String? = null,
     val isGoogleDriveEnabled: Boolean = false,
     val dbFilePath: String? = null,
-    val dbType: String = ""
+    val dbType: String = "",
+    val categories: List<Category> = emptyList(),
+    val defaultCategoryIds: Map<TransactionType, Long?> = emptyMap(),
+    val useLatestCategory: Map<TransactionType, Boolean> = emptyMap()
 )
 
 class SettingsViewModel(
@@ -30,7 +36,8 @@ class SettingsViewModel(
     private val syncCoordinator: SyncCoordinator,
     private val authManager: DriveAuthManager,
     private val featureFlags: FeatureFlags,
-    private val dbHolder: DatabaseHolder
+    private val dbHolder: DatabaseHolder,
+    private val categoryRepo: CategoryRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -56,6 +63,12 @@ class SettingsViewModel(
                     dbType = if (fileId != null) "Google Drive" else "Local"
                 )
             }
+        }
+        viewModelScope.launch {
+            val cats = categoryRepo.getAll()
+            val defaults = TransactionType.entries.associateWith { settings.getDefaultCategoryId(it) }
+            val useLatest = TransactionType.entries.associateWith { settings.getUseLatestCategory(it) }
+            _state.update { it.copy(categories = cats, defaultCategoryIds = defaults, useLatestCategory = useLatest) }
         }
     }
 
@@ -93,4 +106,17 @@ class SettingsViewModel(
         }
     }
 
+    fun onDefaultCategoryChanged(type: TransactionType, id: Long?) {
+        viewModelScope.launch {
+            settings.saveDefaultCategoryId(type, id)
+            _state.update { it.copy(defaultCategoryIds = it.defaultCategoryIds + (type to id)) }
+        }
+    }
+
+    fun onUseLatestCategoryChanged(type: TransactionType, enabled: Boolean) {
+        viewModelScope.launch {
+            settings.saveUseLatestCategory(type, enabled)
+            _state.update { it.copy(useLatestCategory = it.useLatestCategory + (type to enabled)) }
+        }
+    }
 }

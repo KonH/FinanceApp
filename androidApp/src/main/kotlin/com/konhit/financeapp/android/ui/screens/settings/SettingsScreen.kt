@@ -7,15 +7,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.konhit.financeapp.android.BuildConfig
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
+import com.konhit.financeapp.android.ui.components.CategoryPickerDialog
 import com.konhit.financeapp.domain.model.AccessMode
+import com.konhit.financeapp.domain.model.TransactionType
+import com.konhit.financeapp.domain.model.buildPath
 import com.konhit.financeapp.drive.DriveAuthManager
 import org.koin.androidx.compose.get
 import org.koin.androidx.compose.koinViewModel
@@ -32,6 +37,18 @@ fun SettingsScreen(
     val viewModel: SettingsViewModel = koinViewModel()
     val driveAuthManager: DriveAuthManager = get()
     val state by viewModel.state.collectAsState()
+
+    var categoryPickerType by remember { mutableStateOf<TransactionType?>(null) }
+    categoryPickerType?.let { type ->
+        CategoryPickerDialog(
+            categories = state.categories,
+            onSelect = { cat ->
+                viewModel.onDefaultCategoryChanged(type, cat.id)
+                categoryPickerType = null
+            },
+            onDismiss = { categoryPickerType = null }
+        )
+    }
 
     val signInLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -56,6 +73,15 @@ fun SettingsScreen(
         }
     ) { padding ->
         LazyColumn(modifier = Modifier.padding(padding)) {
+
+            item {
+                SectionHeader("About")
+                ListItem(
+                    headlineContent = { Text("Version") },
+                    trailingContent = { Text(BuildConfig.VERSION_NAME, style = MaterialTheme.typography.bodyMedium) }
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
 
             if (state.isGoogleDriveEnabled) {
                 item {
@@ -164,6 +190,59 @@ fun SettingsScreen(
                     headlineContent = { Text("Currencies") },
                     modifier = Modifier.clickable(onClick = onCurrenciesClick)
                 )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+
+            item {
+                SectionHeader("Options")
+                TransactionType.entries.forEach { type ->
+                    val typeName = when (type) {
+                        TransactionType.DEPOSIT    -> "Deposit"
+                        TransactionType.WITHDRAWAL -> "Withdrawal"
+                        TransactionType.TRANSFER   -> "Transfer"
+                    }
+                    val defaultCatId = state.defaultCategoryIds[type]
+                    val defaultCatLabel = defaultCatId
+                        ?.let { state.categories.buildPath(it) }
+                        ?: "Not set"
+
+                    Text(
+                        typeName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 16.dp, top = 12.dp, bottom = 2.dp)
+                    )
+                    ListItem(
+                        headlineContent = { Text("Default category") },
+                        supportingContent = { Text(defaultCatLabel) },
+                        trailingContent = {
+                            if (defaultCatId != null) {
+                                IconButton(onClick = { viewModel.onDefaultCategoryChanged(type, null) }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear")
+                                }
+                            }
+                        },
+                        modifier = Modifier.clickable { categoryPickerType = type }
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.onUseLatestCategoryChanged(
+                                    type,
+                                    !(state.useLatestCategory[type] ?: false)
+                                )
+                            }
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Checkbox(
+                            checked = state.useLatestCategory[type] ?: false,
+                            onCheckedChange = { viewModel.onUseLatestCategoryChanged(type, it) }
+                        )
+                        Text("Use latest category for $typeName")
+                    }
+                }
             }
         }
     }

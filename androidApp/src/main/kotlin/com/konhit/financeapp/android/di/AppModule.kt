@@ -69,6 +69,7 @@ val appModule = module {
             transactionRepo  = get(),
             accountRepo      = get(),
             categoryRepo     = get(),
+            settings         = get(),
             syncCoordinator  = get(),
             dbHolder         = get(),
             initialAccountId = initialAccountId,
@@ -101,7 +102,8 @@ val appModule = module {
             syncCoordinator = get(),
             authManager     = get(),
             featureFlags    = get(),
-            dbHolder        = get()
+            dbHolder        = get(),
+            categoryRepo    = get()
         )
     }
 }

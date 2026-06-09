@@ -18,11 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.konhit.financeapp.android.ui.components.CategoryPickerDialog
 import com.konhit.financeapp.android.ui.util.formatAmount
 import com.konhit.financeapp.domain.model.Account
+import com.konhit.financeapp.domain.model.Category
 import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.Transaction
 import com.konhit.financeapp.domain.model.TransactionType
+import com.konhit.financeapp.domain.model.buildPath
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +98,7 @@ fun FilterScreen(onBack: () -> Unit) {
                         filter = state.filter,
                         accounts = state.accounts,
                         currencies = state.currencies,
-                        categories = state.categories,
+                        categoryList = state.categoryList,
                         onFilterChanged = { viewModel.onFilterChanged(it) },
                         onShowStartDatePicker = { showStartDatePicker = true },
                         onShowEndDatePicker = { showEndDatePicker = true }
@@ -149,7 +152,7 @@ private fun FilterOptionsPanel(
     filter: TransactionFilter,
     accounts: List<Account>,
     currencies: List<Currency>,
-    categories: Map<Long, String>,
+    categoryList: List<Category>,
     onFilterChanged: (TransactionFilter) -> Unit,
     onShowStartDatePicker: () -> Unit,
     onShowEndDatePicker: () -> Unit
@@ -221,8 +224,8 @@ private fun FilterOptionsPanel(
         Spacer(Modifier.height(12.dp))
         Text("Category", style = MaterialTheme.typography.labelMedium)
         Spacer(Modifier.height(4.dp))
-        CategoryDropdown(
-            categories = categories,
+        CategoryTreePicker(
+            categories = categoryList,
             selectedCategoryId = filter.categoryId,
             onSelect = { onFilterChanged(filter.copy(categoryId = it)) }
         )
@@ -363,35 +366,36 @@ private fun CurrencyDropdown(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CategoryDropdown(
-    categories: Map<Long, String>,
+private fun CategoryTreePicker(
+    categories: List<Category>,
     selectedCategoryId: Long?,
     onSelect: (Long?) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = categories[selectedCategoryId] ?: "All categories"
-    val sortedCategories = remember(categories) { categories.entries.sortedBy { it.value } }
+    var showDialog by remember { mutableStateOf(false) }
 
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-        OutlinedTextField(
-            value = selectedLabel,
-            onValueChange = {},
-            readOnly = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor()
+    if (showDialog) {
+        CategoryPickerDialog(
+            categories = categories,
+            onSelect = { cat -> onSelect(cat.id); showDialog = false },
+            onDismiss = { showDialog = false }
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text("All categories") },
-                onClick = { onSelect(null); expanded = false }
-            )
-            sortedCategories.forEach { (id, name) ->
-                DropdownMenuItem(
-                    text = { Text(name) },
-                    onClick = { onSelect(id); expanded = false }
-                )
+    }
+
+    val selectedLabel = selectedCategoryId
+        ?.let { categories.buildPath(it).ifEmpty { null } }
+        ?: "All categories"
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        OutlinedButton(
+            onClick = { showDialog = true },
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(selectedLabel, maxLines = 1)
+        }
+        if (selectedCategoryId != null) {
+            IconButton(onClick = { onSelect(null) }, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
             }
         }
     }

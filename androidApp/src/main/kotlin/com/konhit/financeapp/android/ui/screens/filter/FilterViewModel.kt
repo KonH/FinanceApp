@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.konhit.financeapp.domain.model.Account
+import com.konhit.financeapp.domain.model.Category
 import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.Transaction
 import com.konhit.financeapp.domain.model.TransactionType
@@ -29,6 +30,7 @@ data class FilterState(
     val filter: TransactionFilter = TransactionFilter(),
     val accounts: List<Account> = emptyList(),
     val currencies: List<Currency> = emptyList(),
+    val categoryList: List<Category> = emptyList(),
     val categories: Map<Long, String> = emptyMap(),
     val accountCurrenciesMap: Map<Long, Currency> = emptyMap(),
     val transactions: List<Transaction> = emptyList(),
@@ -73,8 +75,8 @@ class FilterViewModel(
             recompute()
         }
         viewModelScope.launch {
-            val cats = categoryRepo.getAll().associate { it.id to it.name }
-            _state.update { it.copy(categories = cats) }
+            val cats = categoryRepo.getAll()
+            _state.update { it.copy(categoryList = cats, categories = cats.associate { it.id to it.name }) }
         }
         viewModelScope.launch {
             transactionRepo.observeAll().collect { txs ->

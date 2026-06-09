@@ -2,6 +2,7 @@ package com.konhit.financeapp.android.ui.screens.transaction
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -9,6 +10,9 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.konhit.financeapp.android.ui.components.CategoryPickerDialog
@@ -32,9 +36,17 @@ fun TransactionScreen(
 
     var showCategoryPicker by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    val amountFocus = remember { FocusRequester() }
+    val toAmountFocus = remember { FocusRequester() }
+    val notesFocus = remember { FocusRequester() }
 
     LaunchedEffect(state.isSaved) {
         if (state.isSaved) onSaved()
+    }
+
+    LaunchedEffect(state.error) {
+        if (state.error != null) scrollState.animateScrollTo(0)
     }
 
     if (state.showZeroToAmountConfirm) {
@@ -111,9 +123,13 @@ fun TransactionScreen(
                 .padding(padding)
                 .padding(16.dp)
                 .imePadding()
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            state.error?.let { err ->
+                Text(err, color = MaterialTheme.colorScheme.error)
+            }
+
             // Transaction type
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 TransactionType.entries.forEachIndexed { index, type ->
@@ -162,8 +178,12 @@ fun TransactionScreen(
                 value = state.amount,
                 onValueChange = { viewModel.onAmountChanged(it) },
                 label = { Text("Amount") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth()
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = {
+                    if (state.type == TransactionType.TRANSFER) toAmountFocus.requestFocus()
+                    else notesFocus.requestFocus()
+                }),
+                modifier = Modifier.fillMaxWidth().focusRequester(amountFocus)
             )
 
             // To-amount (transfers only)
@@ -172,8 +192,9 @@ fun TransactionScreen(
                     value = state.toAmount,
                     onValueChange = { viewModel.onToAmountChanged(it) },
                     label = { Text("Destination amount") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+                    keyboardActions = KeyboardActions(onNext = { notesFocus.requestFocus() }),
+                    modifier = Modifier.fillMaxWidth().focusRequester(toAmountFocus)
                 )
             }
 
@@ -182,13 +203,11 @@ fun TransactionScreen(
                 value = state.notes,
                 onValueChange = { viewModel.onNotesChanged(it) },
                 label = { Text("Notes") },
-                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { viewModel.onSave() }),
+                modifier = Modifier.fillMaxWidth().focusRequester(notesFocus),
                 minLines = 2
             )
-
-            state.error?.let { err ->
-                Text(err, color = MaterialTheme.colorScheme.error)
-            }
         }
     }
 }

@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Versioning
+
+App version is set in `androidApp/build.gradle.kts` → `versionName`. Format: `X.YY` (e.g., `1.00`, `1.01`, `1.02`).
+**Bump `versionName` by `0.01` after each completed task or fix before committing.**
+The Settings screen reads `BuildConfig.VERSION_NAME` — no other file needs updating.
+
 ## Build & Run
 
 Always build via `build.ps1` (sets `JAVA_HOME` to Android Studio JBR and writes output to `.tmp\gradle\log.txt`).

@@ -6,6 +6,7 @@ import com.konhit.financeapp.db.DatabaseHolder
 import com.konhit.financeapp.domain.model.*
 import com.konhit.financeapp.domain.repository.AccountRepository
 import com.konhit.financeapp.domain.repository.CategoryRepository
+import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.repository.TransactionRepository
 import com.konhit.financeapp.drive.SyncCoordinator
 import kotlinx.coroutines.flow.*
@@ -37,6 +38,7 @@ class TransactionViewModel(
     private val transactionRepo: TransactionRepository,
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
+    private val settings: SettingsRepository,
     private val syncCoordinator: SyncCoordinator,
     private val dbHolder: DatabaseHolder,
     private val initialAccountId: Long?,
@@ -55,7 +57,13 @@ class TransactionViewModel(
             if (editTransId != null) {
                 loadForEdit(editTransId)
             } else {
-                _state.update { it.copy(accountId = initialAccountId ?: accounts.firstOrNull()?.id) }
+                val defaultCatId = settings.getDefaultCategoryId(_state.value.type)
+                _state.update {
+                    it.copy(
+                        accountId = initialAccountId ?: accounts.firstOrNull()?.id,
+                        categId = defaultCatId
+                    )
+                }
             }
         }
     }
@@ -83,14 +91,59 @@ class TransactionViewModel(
 
     fun onDismissZeroToAmountConfirm() = _state.update { it.copy(showZeroToAmountConfirm = false) }
 
-    fun onTypeChanged(type: TransactionType)      = _state.update { it.copy(type = type) }
-    fun onAccountChanged(id: Long)               = _state.update { it.copy(accountId = id) }
-    fun onToAccountChanged(id: Long)             = _state.update { it.copy(toAccountId = id) }
+    fun onTypeChanged(type: TransactionType) {
+        _state.update { s ->
+            val updated = s.copy(type = type)
+            if (type == TransactionType.TRANSFER && isSameCurrency(updated))
+                updated.copy(toAmount = updated.amount)
+            else updated
+        }
+        if (editTransId == null) {
+            viewModelScope.launch {
+                val defaultCatId = settings.getDefaultCategoryId(type)
+                if (defaultCatId != null) _state.update { it.copy(categId = defaultCatId) }
+            }
+        }
+    }
+
+    fun onAccountChanged(id: Long) {
+        _state.update { s ->
+            val updated = s.copy(accountId = id)
+            if (updated.type == TransactionType.TRANSFER && isSameCurrency(updated))
+                updated.copy(toAmount = updated.amount)
+            else updated
+        }
+    }
+
+    fun onToAccountChanged(id: Long) {
+        _state.update { s ->
+            val updated = s.copy(toAccountId = id)
+            if (updated.type == TransactionType.TRANSFER && isSameCurrency(updated))
+                updated.copy(toAmount = updated.amount)
+            else updated
+        }
+    }
+
     fun onCategorySelected(category: Category)   = _state.update { it.copy(categId = category.id) }
     fun onDateChanged(date: String)              = _state.update { it.copy(transDate = date) }
-    fun onAmountChanged(amount: String)          = _state.update { it.copy(amount = amount) }
+
+    fun onAmountChanged(amount: String) {
+        _state.update { s ->
+            s.copy(
+                amount = amount,
+                toAmount = if (s.type == TransactionType.TRANSFER && isSameCurrency(s)) amount else s.toAmount
+            )
+        }
+    }
+
     fun onToAmountChanged(amount: String)        = _state.update { it.copy(toAmount = amount) }
     fun onNotesChanged(notes: String)            = _state.update { it.copy(notes = notes) }
+
+    private fun isSameCurrency(s: TransactionFormState): Boolean {
+        val fromCurrency = s.accounts.find { it.id == s.accountId }?.currencyId
+        val toCurrency = s.accounts.find { it.id == s.toAccountId }?.currencyId
+        return fromCurrency != null && toCurrency != null && fromCurrency == toCurrency
+    }
 
     fun onSave(skipZeroToAmountCheck: Boolean = false) {
         viewModelScope.launch {
