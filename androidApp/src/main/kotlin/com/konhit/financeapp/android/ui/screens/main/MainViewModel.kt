@@ -3,6 +3,7 @@ package com.konhit.financeapp.android.ui.screens.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.konhit.financeapp.android.ui.store.BalanceVisibilityStore
+import com.konhit.financeapp.android.ui.store.HiddenAccountsStore
 import com.konhit.financeapp.domain.model.Account
 import com.konhit.financeapp.domain.model.AccessMode
 import com.konhit.financeapp.domain.model.Currency
@@ -38,7 +39,8 @@ class MainViewModel(
     private val categoryRepo: CategoryRepository,
     private val settings: SettingsRepository,
     private val syncCoordinator: SyncCoordinator,
-    private val balanceVisibilityStore: BalanceVisibilityStore
+    private val balanceVisibilityStore: BalanceVisibilityStore,
+    private val hiddenAccountsStore: HiddenAccountsStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MainState())
@@ -50,6 +52,9 @@ class MainViewModel(
         }
         viewModelScope.launch {
             transactionRepo.observeAnyChange().collect { loadAccounts() }
+        }
+        viewModelScope.launch {
+            hiddenAccountsStore.hiddenIds.collect { loadAccounts() }
         }
         viewModelScope.launch {
             settings.observeAccessMode().collect { mode ->
@@ -91,7 +96,8 @@ class MainViewModel(
 
     private fun loadAccounts() {
         viewModelScope.launch {
-            val accounts = accountRepo.getAll()
+            val hiddenIds = hiddenAccountsStore.hiddenIds.first()
+            val accounts = accountRepo.getAll().filter { it.id !in hiddenIds }
             val allCurrencies = currencyRepo.getAll().associateBy { it.id }
             val groups = accounts
                 .groupBy { it.type }

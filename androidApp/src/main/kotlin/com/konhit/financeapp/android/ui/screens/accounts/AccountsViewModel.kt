@@ -2,6 +2,7 @@ package com.konhit.financeapp.android.ui.screens.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.konhit.financeapp.android.ui.store.HiddenAccountsStore
 import com.konhit.financeapp.domain.model.Account
 import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.repository.AccountRepository
@@ -21,13 +22,15 @@ data class AccountDialogState(
 data class AccountsState(
     val accounts: List<Account> = emptyList(),
     val currencies: List<Currency> = emptyList(),
+    val hiddenAccountIds: Set<Long> = emptySet(),
     val dialog: AccountDialogState? = null
 )
 
 class AccountsViewModel(
     private val accountRepo: AccountRepository,
     private val currencyRepo: CurrencyRepository,
-    private val syncCoordinator: SyncCoordinator
+    private val syncCoordinator: SyncCoordinator,
+    private val hiddenAccountsStore: HiddenAccountsStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AccountsState())
@@ -42,6 +45,11 @@ class AccountsViewModel(
         viewModelScope.launch {
             currencyRepo.observeAll().collect { currencies ->
                 _state.update { it.copy(currencies = currencies) }
+            }
+        }
+        viewModelScope.launch {
+            hiddenAccountsStore.hiddenIds.collect { ids ->
+                _state.update { it.copy(hiddenAccountIds = ids) }
             }
         }
     }
@@ -108,5 +116,9 @@ class AccountsViewModel(
             accountRepo.delete(id)
             syncCoordinator.uploadCurrent()
         }
+    }
+
+    fun onToggleVisibility(id: Long) {
+        viewModelScope.launch { hiddenAccountsStore.toggle(id) }
     }
 }

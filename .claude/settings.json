@@ -1,5 +1,10 @@
 {
   "enabledPlugins": {
     "android-skills@android-skills": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(powershell *)"
+    ]
   }
 }

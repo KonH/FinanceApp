@@ -8,6 +8,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -45,6 +47,13 @@ fun AccountsScreen(onBack: () -> Unit) {
                     supportingContent = { Text(account.type) },
                     trailingContent = {
                         Row {
+                            val hidden = account.id in state.hiddenAccountIds
+                            IconButton(onClick = { viewModel.onToggleVisibility(account.id) }) {
+                                Icon(
+                                    if (hidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    if (hidden) "Show on main screen" else "Hide from main screen"
+                                )
+                            }
                             IconButton(onClick = { viewModel.onEditClick(account) }) {
                                 Icon(Icons.Default.Edit, "Edit")
                             }

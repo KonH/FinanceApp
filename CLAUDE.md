@@ -10,14 +10,11 @@ The Settings screen reads `BuildConfig.VERSION_NAME` — no other file needs upd
 
 ## Build & Run
 
-Always build via `build.ps1` (sets `JAVA_HOME` to Android Studio JBR and writes output to `.tmp\gradle\log.txt`).
+**Always build using the `/build` skill** — invoke it via `Skill("build")`. Never run `gradlew` directly.
 The working directory is always the project root — never use `cd` before commands.
 
-```powershell
-.\build.ps1
-# Then check the log:
-Get-Content .tmp\gradle\log.txt | Select-Object -Last 30
-```
+`build.ps1` sets `JAVA_HOME` to the Android Studio JBR and writes full output to `.tmp\gradle\log.txt`.
+The skill runs `build.ps1` via `powershell -File build.ps1`, then reads the last 30 lines of the log.
 
 ```bash
 # Assemble debug APK (direct, only if JAVA_HOME is already set)

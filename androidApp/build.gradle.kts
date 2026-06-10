@@ -13,7 +13,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.02"
+        versionName = "1.03"
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {
@@ -53,6 +53,8 @@ dependencies {
     implementation(libs.navigation.compose)
     implementation(libs.lifecycle.viewmodel)
     implementation(libs.lifecycle.compose)
+
+    implementation(libs.datastore.prefs)
 
     implementation(libs.koin.android)
     implementation(libs.koin.compose)

@@ -10,6 +10,9 @@ import com.konhit.financeapp.android.ui.screens.main.MainViewModel
 import com.konhit.financeapp.android.ui.screens.settings.SettingsViewModel
 import com.konhit.financeapp.android.ui.screens.transaction.TransactionViewModel
 import com.konhit.financeapp.android.ui.store.BalanceVisibilityStore
+import com.konhit.financeapp.android.ui.store.HiddenAccountsStore
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
@@ -17,6 +20,7 @@ import org.koin.dsl.module
 val appModule = module {
 
     single { BalanceVisibilityStore() }
+    single { HiddenAccountsStore(get<DataStore<Preferences>>()) }
 
     viewModel {
         FirstLaunchViewModel(
@@ -37,7 +41,8 @@ val appModule = module {
             categoryRepo           = get(),
             settings               = get(),
             syncCoordinator        = get(),
-            balanceVisibilityStore = get()
+            balanceVisibilityStore = get(),
+            hiddenAccountsStore    = get()
         )
     }
 
@@ -79,9 +84,10 @@ val appModule = module {
 
     viewModel {
         AccountsViewModel(
-            accountRepo     = get(),
-            currencyRepo    = get(),
-            syncCoordinator = get()
+            accountRepo         = get(),
+            currencyRepo        = get(),
+            syncCoordinator     = get(),
+            hiddenAccountsStore = get()
         )
     }
 
