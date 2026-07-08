@@ -30,6 +30,8 @@ class SettingsRepositoryImpl(
     private val keyUseLatestWithdrawal  = booleanPreferencesKey("use_latest_withdrawal")
     private val keyUseLatestTransfer    = booleanPreferencesKey("use_latest_transfer")
 
+    private val keyBudgets = stringPreferencesKey("budgets")
+
     private fun defaultCatKey(type: TransactionType) = when (type) {
         TransactionType.DEPOSIT    -> keyDefaultCatDeposit
         TransactionType.WITHDRAWAL -> keyDefaultCatWithdrawal
@@ -103,5 +105,29 @@ class SettingsRepositoryImpl(
 
     override suspend fun saveUseLatestCategory(type: TransactionType, enabled: Boolean) {
         dataStore.edit { it[useLatestKey(type)] = enabled }
+    }
+
+    override fun observeBudgets(): Flow<Map<Long, Double>> =
+        dataStore.data.map { prefs -> parseBudgets(prefs[keyBudgets]) }
+
+    override suspend fun getBudgets(): Map<Long, Double> =
+        observeBudgets().first()
+
+    override suspend fun saveBudget(currencyId: Long, amount: Double?) {
+        dataStore.edit { prefs ->
+            val current = parseBudgets(prefs[keyBudgets]).toMutableMap()
+            if (amount != null && amount > 0) current[currencyId] = amount else current.remove(currencyId)
+            prefs[keyBudgets] = current.entries.joinToString(",") { "${it.key}:${it.value}" }
+        }
+    }
+
+    private fun parseBudgets(raw: String?): Map<Long, Double> {
+        if (raw.isNullOrEmpty()) return emptyMap()
+        return raw.split(",").mapNotNull { entry ->
+            val parts = entry.split(":")
+            val id = parts.getOrNull(0)?.toLongOrNull()
+            val amount = parts.getOrNull(1)?.toDoubleOrNull()
+            if (id != null && amount != null) id to amount else null
+        }.toMap()
     }
 }

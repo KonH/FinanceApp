@@ -99,6 +99,11 @@ class TransactionRepositoryImpl(
         }
     }
 
+    override suspend fun getExpensesByCurrencyForMonth(yearMonth: String): Map<Long, Double> = withContext(Dispatchers.IO) {
+        holder.requireDb().transactionQueries.expensesByCurrencyForMonth(yearMonth).executeAsList()
+            .associate { it.currencyId to it.total }
+    }
+
     private suspend fun checkWritable() {
         check(settings.getAccessMode() == AccessMode.READ_WRITE) {
             "Cannot write in read-only mode"

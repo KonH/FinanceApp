@@ -14,4 +14,5 @@ interface TransactionRepository {
     suspend fun update(transaction: Transaction)
     suspend fun delete(transId: Long)
     suspend fun search(query: String): List<Transaction>
+    suspend fun getExpensesByCurrencyForMonth(yearMonth: String): Map<Long, Double>
 }

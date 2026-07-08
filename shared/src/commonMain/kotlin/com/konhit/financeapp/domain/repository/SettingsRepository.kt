@@ -26,4 +26,8 @@ interface SettingsRepository {
 
     suspend fun getUseLatestCategory(type: TransactionType): Boolean
     suspend fun saveUseLatestCategory(type: TransactionType, enabled: Boolean)
+
+    fun observeBudgets(): Flow<Map<Long, Double>>
+    suspend fun getBudgets(): Map<Long, Double>
+    suspend fun saveBudget(currencyId: Long, amount: Double?)
 }

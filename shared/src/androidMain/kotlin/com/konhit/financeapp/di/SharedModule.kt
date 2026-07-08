@@ -15,6 +15,7 @@ import com.konhit.financeapp.domain.repository.CurrencyRepository
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.repository.TransactionRepository
 import com.konhit.financeapp.domain.usecase.ComputeBalanceUseCase
+import com.konhit.financeapp.domain.usecase.ComputeBudgetUsageUseCase
 import com.konhit.financeapp.domain.usecase.InitialiseFileUseCase
 import com.konhit.financeapp.domain.usecase.OpenFileUseCase
 import com.konhit.financeapp.feature.FeatureFlags
@@ -61,6 +62,7 @@ val sharedModule = module {
     single { FeatureFlags() }
 
     factory { ComputeBalanceUseCase() }
+    factory { ComputeBudgetUsageUseCase() }
     factory { InitialiseFileUseCase(get(), get(), get(), get(), get()) }
     factory { OpenFileUseCase(get(), get(), get()) }
 }

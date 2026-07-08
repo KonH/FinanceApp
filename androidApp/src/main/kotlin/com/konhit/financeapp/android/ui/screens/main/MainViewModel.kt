@@ -13,9 +13,11 @@ import com.konhit.financeapp.domain.repository.CategoryRepository
 import com.konhit.financeapp.domain.repository.CurrencyRepository
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.repository.TransactionRepository
+import com.konhit.financeapp.domain.usecase.ComputeBudgetUsageUseCase
 import com.konhit.financeapp.drive.SyncCoordinator
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 data class AccountGroup(
     val type: String,
@@ -23,10 +25,18 @@ data class AccountGroup(
     val totalsByCurrency: List<Pair<Currency, Double>>
 )
 
+data class BudgetItem(
+    val currency: Currency,
+    val actualPercent: Double,
+    val expectedPercent: Double,
+    val showExpected: Boolean
+)
+
 data class MainState(
     val accountGroups: List<AccountGroup> = emptyList(),
     val currencies: Map<Long, Currency> = emptyMap(),
     val totalsByCurrency: List<Pair<Currency, Double>> = emptyList(),
+    val budgetItems: List<BudgetItem> = emptyList(),
     val syncState: SyncState = SyncState.Idle,
     val isReadOnly: Boolean = false,
     val balanceVisible: Boolean = true
@@ -40,7 +50,8 @@ class MainViewModel(
     private val settings: SettingsRepository,
     private val syncCoordinator: SyncCoordinator,
     private val balanceVisibilityStore: BalanceVisibilityStore,
-    private val hiddenAccountsStore: HiddenAccountsStore
+    private val hiddenAccountsStore: HiddenAccountsStore,
+    private val computeBudgetUsage: ComputeBudgetUsageUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MainState())
@@ -71,7 +82,14 @@ class MainViewModel(
                 _state.update { it.copy(balanceVisible = visible) }
             }
         }
+        viewModelScope.launch {
+            transactionRepo.observeAnyChange().collect { loadBudgets() }
+        }
+        viewModelScope.launch {
+            settings.observeBudgets().collect { loadBudgets() }
+        }
         loadAccounts()
+        loadBudgets()
     }
 
     fun onToggleBalanceVisibility() {
@@ -115,6 +133,37 @@ class MainViewModel(
                     allCurrencies[cid]?.let { it to accs.sumOf { a -> a.balance } }
                 }
             _state.update { it.copy(accountGroups = groups, currencies = allCurrencies, totalsByCurrency = totals) }
+        }
+    }
+
+    private fun loadBudgets() {
+        viewModelScope.launch {
+            val budgets = settings.getBudgets()
+            if (budgets.isEmpty()) {
+                _state.update { it.copy(budgetItems = emptyList()) }
+                return@launch
+            }
+            val today = LocalDate.now()
+            val yearMonth = "%04d-%02d".format(today.year, today.monthValue)
+            val expenses = transactionRepo.getExpensesByCurrencyForMonth(yearMonth)
+            val allCurrencies = currencyRepo.getAll().associateBy { it.id }
+            val usages = computeBudgetUsage(
+                budgets     = budgets,
+                expenses    = expenses,
+                dayOfMonth  = today.dayOfMonth,
+                daysInMonth = today.lengthOfMonth()
+            )
+            val items = usages.mapNotNull { usage ->
+                allCurrencies[usage.currencyId]?.let { currency ->
+                    BudgetItem(
+                        currency        = currency,
+                        actualPercent   = usage.actualPercent,
+                        expectedPercent = usage.expectedPercent,
+                        showExpected    = usage.actualPercent > usage.expectedPercent
+                    )
+                }
+            }
+            _state.update { it.copy(budgetItems = items) }
         }
     }
 }

@@ -26,6 +26,13 @@ data class TransactionFilter(
     val maxAmount: Double? = null
 )
 
+data class CurrencyFlowSummary(
+    val currency: Currency,
+    val income: Double,
+    val expense: Double,
+    val net: Double
+)
+
 data class FilterState(
     val filter: TransactionFilter = TransactionFilter(),
     val accounts: List<Account> = emptyList(),
@@ -34,7 +41,7 @@ data class FilterState(
     val categories: Map<Long, String> = emptyMap(),
     val accountCurrenciesMap: Map<Long, Currency> = emptyMap(),
     val transactions: List<Transaction> = emptyList(),
-    val balanceSums: List<Pair<Currency, Double>> = emptyList(),
+    val flowSummaries: List<CurrencyFlowSummary> = emptyList(),
     val isFiltersExpanded: Boolean = true
 )
 
@@ -101,7 +108,7 @@ class FilterViewModel(
         _state.update {
             it.copy(
                 transactions = filtered,
-                balanceSums = computeBalanceSums(filtered, s.accountCurrenciesMap)
+                flowSummaries = computeFlowSummaries(filtered, s.accountCurrenciesMap)
             )
         }
     }
@@ -121,21 +128,28 @@ class FilterViewModel(
         (filter.maxAmount == null || tx.transAmount <= filter.maxAmount)
     }
 
-    private fun computeBalanceSums(
+    private fun computeFlowSummaries(
         transactions: List<Transaction>,
         accountCurrencies: Map<Long, Currency>
-    ): List<Pair<Currency, Double>> {
-        val sums = mutableMapOf<Long, Double>()
+    ): List<CurrencyFlowSummary> {
+        val income = mutableMapOf<Long, Double>()
+        val expense = mutableMapOf<Long, Double>()
         for (tx in transactions) {
-            val signed = when (tx.type) {
-                TransactionType.DEPOSIT    ->  tx.transAmount
-                TransactionType.WITHDRAWAL -> -tx.transAmount
-                TransactionType.TRANSFER   ->  0.0
-            }
             val currency = accountCurrencies[tx.accountId] ?: continue
-            sums[currency.id] = (sums[currency.id] ?: 0.0) + signed
+            when (tx.type) {
+                TransactionType.DEPOSIT    -> income[currency.id] = (income[currency.id] ?: 0.0) + tx.transAmount
+                TransactionType.WITHDRAWAL -> expense[currency.id] = (expense[currency.id] ?: 0.0) + tx.transAmount
+                TransactionType.TRANSFER   -> {}
+            }
         }
         val currencyById = accountCurrencies.values.associateBy { it.id }
-        return sums.mapNotNull { (currId, amount) -> currencyById[currId]?.let { it to amount } }
+        val currencyIds = income.keys + expense.keys
+        return currencyIds.mapNotNull { id ->
+            currencyById[id]?.let { currency ->
+                val inc = income[id] ?: 0.0
+                val exp = expense[id] ?: 0.0
+                CurrencyFlowSummary(currency = currency, income = inc, expense = exp, net = inc - exp)
+            }
+        }
     }
 }

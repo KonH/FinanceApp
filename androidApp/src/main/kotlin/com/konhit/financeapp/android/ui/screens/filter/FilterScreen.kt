@@ -123,7 +123,7 @@ fun FilterScreen(onBack: () -> Unit) {
                 HorizontalDivider()
             }
             item {
-                FilterBalanceSummary(balanceSums = state.balanceSums)
+                FilterBalanceSummary(summaries = state.flowSummaries)
             }
         }
     }
@@ -435,13 +435,19 @@ private fun FilterTransactionRow(
 }
 
 @Composable
-private fun FilterBalanceSummary(balanceSums: List<Pair<Currency, Double>>) {
-    if (balanceSums.isEmpty()) return
+private fun FilterBalanceSummary(summaries: List<CurrencyFlowSummary>) {
+    if (summaries.isEmpty()) return
     HorizontalDivider()
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text("Net flow", style = MaterialTheme.typography.labelMedium)
-        balanceSums.forEach { (currency, total) ->
-            Text(formatAmount(total, currency), style = MaterialTheme.typography.bodyMedium)
+        summaries.forEach { summary ->
+            Text(formatAmount(summary.net, summary.currency), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                "Income ${formatAmount(summary.income, summary.currency)}  ·  Expenses ${formatAmount(summary.expense, summary.currency)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
         }
     }
 }

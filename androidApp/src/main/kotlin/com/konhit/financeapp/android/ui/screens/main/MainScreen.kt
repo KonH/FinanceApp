@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.konhit.financeapp.android.ui.util.formatAmount
@@ -20,6 +21,7 @@ import com.konhit.financeapp.domain.model.Account
 import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.SyncState
 import org.koin.androidx.compose.koinViewModel
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +32,7 @@ fun MainScreen(
 ) {
     val viewModel: MainViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
+    var budgetExpanded by remember { mutableStateOf(false) }
 
     val syncState = state.syncState
     if (syncState is SyncState.Conflict) {
@@ -90,6 +93,18 @@ fun MainScreen(
                 totals = state.totalsByCurrency,
                 balanceVisible = state.balanceVisible
             )
+
+            if (state.budgetItems.isNotEmpty()) {
+                FilterChip(
+                    selected = budgetExpanded,
+                    onClick = { budgetExpanded = !budgetExpanded },
+                    label = { Text("Budget") },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                if (budgetExpanded) {
+                    BudgetSection(state.budgetItems)
+                }
+            }
 
             if (syncState is SyncState.Error) {
                 Text(
@@ -184,6 +199,47 @@ private fun TotalBalanceSection(totals: List<Pair<Currency, Double>>, balanceVis
                 if (balanceVisible) formatAmount(total, currency) else "•••",
                 style = MaterialTheme.typography.bodyMedium
             )
+        }
+    }
+}
+
+@Composable
+private fun BudgetSection(items: List<BudgetItem>) {
+    HorizontalDivider()
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        items.forEach { item ->
+            val fraction = (item.actualPercent / 100.0).toFloat().coerceIn(0f, 1f)
+            val label = item.currency.currencySymbol?.takeIf { it.isNotEmpty() } ?: item.currency.name
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Text(
+                    "$label ${item.actualPercent.roundToInt()}%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                LinearProgressIndicator(
+                    progress = { fraction },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(8.dp),
+                    color = if (item.showExpected)
+                        MaterialTheme.colorScheme.error
+                    else
+                        MaterialTheme.colorScheme.primary
+                )
+                if (item.showExpected) {
+                    Text(
+                        " (expected ${item.expectedPercent.roundToInt()}%)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
         }
     }
 }

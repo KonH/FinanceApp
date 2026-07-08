@@ -9,10 +9,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.konhit.financeapp.android.BuildConfig
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -241,6 +243,42 @@ fun SettingsScreen(
                             onCheckedChange = { viewModel.onUseLatestCategoryChanged(type, it) }
                         )
                         Text("Use latest category for $typeName")
+                    }
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+
+            if (state.budgetCurrencies.isNotEmpty()) {
+                item {
+                    SectionHeader("Budget")
+                    Text(
+                        "Monthly spending limit per currency",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)
+                    )
+                    state.budgetCurrencies.forEach { currency ->
+                        val label = currency.currencySymbol?.takeIf { it.isNotEmpty() } ?: currency.name
+                        var text by remember(currency.id, state.budgets[currency.id]) {
+                            mutableStateOf(state.budgets[currency.id]?.toString() ?: "")
+                        }
+                        OutlinedTextField(
+                            value = text,
+                            onValueChange = { newValue ->
+                                text = newValue
+                                if (newValue.isEmpty()) {
+                                    viewModel.onBudgetChanged(currency.id, null)
+                                } else {
+                                    newValue.toDoubleOrNull()?.let { viewModel.onBudgetChanged(currency.id, it) }
+                                }
+                            },
+                            label = { Text(label) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
                     }
                 }
             }

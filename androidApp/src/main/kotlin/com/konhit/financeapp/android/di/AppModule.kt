@@ -42,7 +42,8 @@ val appModule = module {
             settings               = get(),
             syncCoordinator        = get(),
             balanceVisibilityStore = get(),
-            hiddenAccountsStore    = get()
+            hiddenAccountsStore    = get(),
+            computeBudgetUsage     = get()
         )
     }
 
@@ -109,7 +110,9 @@ val appModule = module {
             authManager     = get(),
             featureFlags    = get(),
             dbHolder        = get(),
-            categoryRepo    = get()
+            categoryRepo    = get(),
+            accountRepo     = get(),
+            currencyRepo    = get()
         )
     }
 }

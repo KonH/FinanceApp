@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.konhit.financeapp.db.DatabaseHolder
 import com.konhit.financeapp.domain.model.AccessMode
 import com.konhit.financeapp.domain.model.Category
+import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.TransactionType
+import com.konhit.financeapp.domain.repository.AccountRepository
 import com.konhit.financeapp.domain.repository.CategoryRepository
+import com.konhit.financeapp.domain.repository.CurrencyRepository
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.feature.FeatureFlags
 import com.konhit.financeapp.drive.DriveAuthManager
@@ -28,7 +31,9 @@ data class SettingsState(
     val dbType: String = "",
     val categories: List<Category> = emptyList(),
     val defaultCategoryIds: Map<TransactionType, Long?> = emptyMap(),
-    val useLatestCategory: Map<TransactionType, Boolean> = emptyMap()
+    val useLatestCategory: Map<TransactionType, Boolean> = emptyMap(),
+    val budgetCurrencies: List<Currency> = emptyList(),
+    val budgets: Map<Long, Double> = emptyMap()
 )
 
 class SettingsViewModel(
@@ -37,7 +42,9 @@ class SettingsViewModel(
     private val authManager: DriveAuthManager,
     private val featureFlags: FeatureFlags,
     private val dbHolder: DatabaseHolder,
-    private val categoryRepo: CategoryRepository
+    private val categoryRepo: CategoryRepository,
+    private val accountRepo: AccountRepository,
+    private val currencyRepo: CurrencyRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -69,6 +76,15 @@ class SettingsViewModel(
             val defaults = TransactionType.entries.associateWith { settings.getDefaultCategoryId(it) }
             val useLatest = TransactionType.entries.associateWith { settings.getUseLatestCategory(it) }
             _state.update { it.copy(categories = cats, defaultCategoryIds = defaults, useLatestCategory = useLatest) }
+        }
+        viewModelScope.launch {
+            val allCurrencies = currencyRepo.getAll().associateBy { it.id }
+            val currenciesInUse = accountRepo.getAll()
+                .mapNotNull { allCurrencies[it.currencyId] }
+                .distinctBy { it.id }
+                .sortedBy { it.name }
+            val budgets = settings.getBudgets()
+            _state.update { it.copy(budgetCurrencies = currenciesInUse, budgets = budgets) }
         }
     }
 
@@ -117,6 +133,20 @@ class SettingsViewModel(
         viewModelScope.launch {
             settings.saveUseLatestCategory(type, enabled)
             _state.update { it.copy(useLatestCategory = it.useLatestCategory + (type to enabled)) }
+        }
+    }
+
+    fun onBudgetChanged(currencyId: Long, amount: Double?) {
+        viewModelScope.launch {
+            settings.saveBudget(currencyId, amount)
+            _state.update {
+                val budgets = if (amount != null && amount > 0) {
+                    it.budgets + (currencyId to amount)
+                } else {
+                    it.budgets - currencyId
+                }
+                it.copy(budgets = budgets)
+            }
         }
     }
 }
