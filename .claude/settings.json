@@ -1,10 +1,19 @@
 {
-  "enabledPlugins": {
-    "android-skills@android-skills": true
-  },
   "permissions": {
     "allow": [
       "Bash(powershell *)"
     ]
+  },
+  "enabledPlugins": {
+    "android-skills@android-skills": true,
+    "k@claude-tools": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-tools": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/KonH/ClaudeTools.git"
+      }
+    }
   }
 }
