@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.konhit.financeapp.domain.model.Category
+import com.konhit.financeapp.domain.model.buildPath
 import com.konhit.financeapp.domain.model.toTree
 import com.konhit.financeapp.domain.model.flattenWithDepth
 import org.koin.androidx.compose.koinViewModel
@@ -100,9 +101,16 @@ private fun CategoryDialog(
     var parentExpanded by remember { mutableStateOf(false) }
 
     val parentOptions = remember(categories, dialog.id) {
-        listOf(Category(-1L, "None", -1L)) + categories.filter { it.id != dialog.id }
+        listOf(-1L to "None") +
+            categories
+                .filter { it.id != dialog.id }
+                .map { it.id to categories.buildPath(it.id) }
+                .sortedBy { it.second }
     }
-    val selectedParent = parentOptions.find { it.id == dialog.parentId } ?: parentOptions.first()
+    val selectedParentLabel = parentOptions
+        .find { it.first == dialog.parentId }
+        ?.second
+        ?: "None"
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -121,7 +129,7 @@ private fun CategoryDialog(
                     onExpandedChange = { parentExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedParent.name,
+                        value = selectedParentLabel,
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Parent") },
@@ -132,10 +140,10 @@ private fun CategoryDialog(
                         expanded = parentExpanded,
                         onDismissRequest = { parentExpanded = false }
                     ) {
-                        parentOptions.forEach { cat ->
+                        parentOptions.forEach { (id, label) ->
                             DropdownMenuItem(
-                                text = { Text(cat.name) },
-                                onClick = { onParentChange(cat.id); parentExpanded = false }
+                                text = { Text(label) },
+                                onClick = { onParentChange(id); parentExpanded = false }
                             )
                         }
                     }

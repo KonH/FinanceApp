@@ -13,7 +13,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.05"
+        versionName = "1.06"
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions {
