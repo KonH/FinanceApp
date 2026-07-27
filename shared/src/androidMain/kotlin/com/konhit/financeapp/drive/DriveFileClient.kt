@@ -67,4 +67,12 @@ class DriveFileClient(private val authManager: DriveAuthManager) {
             .execute()
         Instant.fromEpochMilliseconds(file.modifiedTime.value)
     }
+
+    /** Returns Drive's MD5 of the file contents, or null if unavailable. */
+    suspend fun getRemoteMd5Checksum(fileId: String): String? = withContext(Dispatchers.IO) {
+        buildDrive().files().get(fileId)
+            .setFields("md5Checksum")
+            .execute()
+            .md5Checksum
+    }
 }
