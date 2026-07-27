@@ -7,6 +7,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.EventRepeat
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -128,6 +129,17 @@ fun TransactionScreen(
         ) {
             state.error?.let { err ->
                 Text(err, color = MaterialTheme.colorScheme.error)
+            }
+
+            if (state.fromSchedule) {
+                AssistChip(
+                    onClick = {},
+                    enabled = false,
+                    label = { Text("From schedule") },
+                    leadingIcon = {
+                        Icon(Icons.Default.EventRepeat, contentDescription = null)
+                    }
+                )
             }
 
             // Transaction type

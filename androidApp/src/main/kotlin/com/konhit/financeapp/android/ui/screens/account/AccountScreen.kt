@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EventRepeat
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -153,7 +154,19 @@ private fun TransactionRow(
 ) {
     ListItem(
         headlineContent = {
-            Text(categories[transaction.categId] ?: transaction.notes ?: "")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (transaction.fromSchedule) {
+                    Icon(
+                        Icons.Default.EventRepeat,
+                        contentDescription = "From schedule",
+                        modifier = Modifier
+                            .padding(end = 6.dp)
+                            .size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Text(categories[transaction.categId] ?: transaction.notes ?: "")
+            }
         },
         supportingContent = { Text(transaction.transDate.substringBefore('T')) },
         trailingContent = {

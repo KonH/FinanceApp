@@ -24,11 +24,11 @@ class TransactionRepositoryImpl(
         holder.requireDb().transactionQueries.selectAll()
             .asFlow()
             .mapToList(Dispatchers.IO)
-            .map { rows -> rows.map { row -> mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES) } }
+            .map { rows -> rows.map { mapRow(it.TRANSID, it.ACCOUNTID, it.TOACCOUNTID, it.PAYEEID, it.TRANSCODE, it.TRANSAMOUNT, it.TOTRANSAMOUNT, it.CATEGID, it.TRANSDATE, it.LASTUPDATEDTIME, it.NOTES, it.FOLLOWUPID) } }
 
     override suspend fun getAll(): List<Transaction> = withContext(Dispatchers.IO) {
         holder.requireDb().transactionQueries.selectAll().executeAsList().map { row ->
-            mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES)
+            mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES, row.FOLLOWUPID)
         }
     }
 
@@ -41,17 +41,17 @@ class TransactionRepositoryImpl(
             .selectByAccount(accountId)
             .asFlow()
             .mapToList(Dispatchers.IO)
-            .map { rows -> rows.map { row -> mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES) } }
+            .map { rows -> rows.map { mapRow(it.TRANSID, it.ACCOUNTID, it.TOACCOUNTID, it.PAYEEID, it.TRANSCODE, it.TRANSAMOUNT, it.TOTRANSAMOUNT, it.CATEGID, it.TRANSDATE, it.LASTUPDATEDTIME, it.NOTES, it.FOLLOWUPID) } }
 
     override suspend fun getByAccount(accountId: Long): List<Transaction> = withContext(Dispatchers.IO) {
         holder.requireDb().transactionQueries.selectByAccount(accountId).executeAsList().map { row ->
-            mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES)
+            mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES, row.FOLLOWUPID)
         }
     }
 
     override suspend fun getById(transId: Long): Transaction? = withContext(Dispatchers.IO) {
         holder.requireDb().transactionQueries.selectById(transId).executeAsOneOrNull()?.let { row ->
-            mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES)
+            mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES, row.FOLLOWUPID)
         }
     }
 
@@ -68,7 +68,8 @@ class TransactionRepositoryImpl(
             notes           = transaction.notes,
             categId         = transaction.categId,
             transDate       = transaction.transDate,
-            lastUpdatedTime = transaction.lastUpdatedTime
+            lastUpdatedTime = transaction.lastUpdatedTime,
+            followupId      = transaction.followupId
         )
     }
 
@@ -95,7 +96,7 @@ class TransactionRepositoryImpl(
 
     override suspend fun search(query: String): List<Transaction> = withContext(Dispatchers.IO) {
         holder.requireDb().transactionQueries.search(query).executeAsList().map { row ->
-            mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES)
+            mapRow(row.TRANSID, row.ACCOUNTID, row.TOACCOUNTID, row.PAYEEID, row.TRANSCODE, row.TRANSAMOUNT, row.TOTRANSAMOUNT, row.CATEGID, row.TRANSDATE, row.LASTUPDATEDTIME, row.NOTES, row.FOLLOWUPID)
         }
     }
 
@@ -113,7 +114,8 @@ class TransactionRepositoryImpl(
     private fun mapRow(
         transId: Long, accountId: Long, toAccountId: Long, payeeId: Long,
         transCode: String, transAmount: Double, toTransAmount: Double,
-        categId: Long?, transDate: String, lastUpdatedTime: String?, notes: String?
+        categId: Long?, transDate: String, lastUpdatedTime: String?, notes: String?,
+        followupId: Long
     ) = Transaction(
         transId         = transId,
         accountId       = accountId,
@@ -125,6 +127,7 @@ class TransactionRepositoryImpl(
         categId         = categId,
         transDate       = transDate,
         lastUpdatedTime = lastUpdatedTime,
-        notes           = notes
+        notes           = notes,
+        followupId      = followupId
     )
 }

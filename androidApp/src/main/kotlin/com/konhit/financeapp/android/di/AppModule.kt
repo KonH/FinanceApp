@@ -7,6 +7,9 @@ import com.konhit.financeapp.android.ui.screens.currencies.CurrenciesViewModel
 import com.konhit.financeapp.android.ui.screens.filter.FilterViewModel
 import com.konhit.financeapp.android.ui.screens.firstlaunch.FirstLaunchViewModel
 import com.konhit.financeapp.android.ui.screens.main.MainViewModel
+import com.konhit.financeapp.android.ui.screens.scheduled.ScheduledDueViewModel
+import com.konhit.financeapp.android.ui.screens.scheduled.ScheduledEditViewModel
+import com.konhit.financeapp.android.ui.screens.scheduled.ScheduledListViewModel
 import com.konhit.financeapp.android.ui.screens.settings.SettingsViewModel
 import com.konhit.financeapp.android.ui.screens.transaction.TransactionViewModel
 import com.konhit.financeapp.android.ui.store.BalanceVisibilityStore
@@ -113,6 +116,37 @@ val appModule = module {
             categoryRepo    = get(),
             accountRepo     = get(),
             currencyRepo    = get()
+        )
+    }
+
+    viewModel {
+        ScheduledListViewModel(
+            scheduledRepo   = get(),
+            accountRepo     = get(),
+            categoryRepo    = get(),
+            settings        = get(),
+            syncCoordinator = get()
+        )
+    }
+
+    viewModel { (editBdId: Long?) ->
+        ScheduledEditViewModel(
+            scheduledRepo   = get(),
+            accountRepo     = get(),
+            categoryRepo    = get(),
+            settings        = get(),
+            syncCoordinator = get(),
+            dbHolder        = get(),
+            editBdId        = editBdId
+        )
+    }
+
+    viewModel {
+        ScheduledDueViewModel(
+            processDue      = get(),
+            accountRepo     = get(),
+            categoryRepo    = get(),
+            syncCoordinator = get()
         )
     }
 }

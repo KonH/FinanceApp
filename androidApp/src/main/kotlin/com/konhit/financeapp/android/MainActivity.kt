@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -12,17 +13,23 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import com.konhit.financeapp.android.ui.navigation.AppNavGraph
 import com.konhit.financeapp.android.ui.navigation.Routes
+import com.konhit.financeapp.android.ui.screens.scheduled.ScheduledDueDialog
+import com.konhit.financeapp.android.ui.screens.scheduled.ScheduledDueViewModel
+import com.konhit.financeapp.db.DatabaseHolder
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.usecase.OpenFileUseCase
 import com.konhit.financeapp.drive.SyncCoordinator
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class MainActivity : ComponentActivity() {
 
     private val settings: SettingsRepository by inject()
     private val syncCoordinator: SyncCoordinator by inject()
     private val openFile: OpenFileUseCase by inject()
+    private val dbHolder: DatabaseHolder by inject()
+    private val scheduledDueViewModel: ScheduledDueViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,6 +37,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 var startDestination by remember { mutableStateOf<String?>(null) }
+                val dueState by scheduledDueViewModel.state.collectAsState()
 
                 LaunchedEffect(Unit) {
                     val hasFile = settings.getLocalFilePath() != null
@@ -37,8 +45,8 @@ class MainActivity : ComponentActivity() {
                         try {
                             openFile()
                             startDestination = Routes.MAIN
+                            scheduledDueViewModel.checkDue()
                         } catch (e: Exception) {
-                            // No local cache available and network unreachable — go to first launch
                             startDestination = Routes.FIRST_LAUNCH
                         }
                     } else {
@@ -47,9 +55,29 @@ class MainActivity : ComponentActivity() {
                 }
 
                 startDestination?.let { dest ->
-                    AppNavGraph(startDestination = dest)
+                    AppNavGraph(
+                        startDestination = dest,
+                        onDatabaseReady = { scheduledDueViewModel.checkDue() }
+                    )
+                }
+
+                dueState.current?.let { info ->
+                    ScheduledDueDialog(
+                        info = info,
+                        busy = dueState.busy,
+                        onApprove = scheduledDueViewModel::onApprove,
+                        onCancelOnce = scheduledDueViewModel::onCancelOnce,
+                        onDeleteScheduled = scheduledDueViewModel::onDeleteScheduled
+                    )
                 }
             }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (dbHolder.database != null) {
+            scheduledDueViewModel.checkDue()
         }
     }
 

@@ -11,5 +11,12 @@ data class Transaction(
     val categId: Long?,
     val transDate: String,
     val lastUpdatedTime: String?,
-    val notes: String?
-)
+    val notes: String?,
+    /**
+     * MMEX FOLLOWUPID. `-1` for normal rows; source `BDID` when created from a schedule.
+     * Encodes the boolean fromSchedule marker without altering CHECKINGACCOUNT_V1 schema.
+     */
+    val followupId: Long = -1L
+) {
+    val fromSchedule: Boolean get() = followupId != -1L
+}

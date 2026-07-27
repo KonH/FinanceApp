@@ -28,6 +28,7 @@ data class TransactionFormState(
     val amount: String = "",
     val toAmount: String = "",
     val notes: String = "",
+    val fromSchedule: Boolean = false,
     val isSaving: Boolean = false,
     val error: String? = null,
     val isSaved: Boolean = false,
@@ -79,7 +80,8 @@ class TransactionViewModel(
                 transDate  = tx.transDate,
                 amount     = tx.transAmount.toDisplayString(),
                 toAmount   = tx.toTransAmount.toDisplayString(),
-                notes      = tx.notes ?: ""
+                notes      = tx.notes ?: "",
+                fromSchedule = tx.fromSchedule
             )
         }
     }
