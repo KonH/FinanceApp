@@ -34,6 +34,7 @@ fun SettingsScreen(
     onAccountsClick: () -> Unit,
     onCategoriesClick: () -> Unit,
     onCurrenciesClick: () -> Unit,
+    onScheduledClick: () -> Unit,
     onCloseDatabase: () -> Unit
 ) {
     val viewModel: SettingsViewModel = koinViewModel()
@@ -191,6 +192,10 @@ fun SettingsScreen(
                 ListItem(
                     headlineContent = { Text("Currencies") },
                     modifier = Modifier.clickable(onClick = onCurrenciesClick)
+                )
+                ListItem(
+                    headlineContent = { Text("Scheduled transactions") },
+                    modifier = Modifier.clickable(onClick = onScheduledClick)
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }

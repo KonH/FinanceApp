@@ -7,6 +7,8 @@ object Routes {
     const val ACCOUNTS      = "accounts"
     const val CATEGORIES    = "categories"
     const val CURRENCIES    = "currencies"
+    const val SCHEDULED     = "scheduled"
+    const val SCHEDULED_EDIT = "scheduled_edit?bdId={bdId}"
     const val ACCOUNT       = "account/{accountId}"
     const val TRANSACTION   = "transaction?accountId={accountId}&transId={transId}"
     const val FILTER        = "filter/{accountId}"
@@ -15,4 +17,5 @@ object Routes {
     fun transactionAdd(accountId: Long) = "transaction?accountId=$accountId&transId=-1"
     fun transactionEdit(transId: Long) = "transaction?accountId=-1&transId=$transId"
     fun filter(accountId: Long = -1L) = "filter/$accountId"
+    fun scheduledEdit(bdId: Long = -1L) = "scheduled_edit?bdId=$bdId"
 }

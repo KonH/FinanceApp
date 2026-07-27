@@ -5,6 +5,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import com.konhit.financeapp.data.repository.AccountRepositoryImpl
 import com.konhit.financeapp.data.repository.CategoryRepositoryImpl
 import com.konhit.financeapp.data.repository.CurrencyRepositoryImpl
+import com.konhit.financeapp.data.repository.ScheduledTransactionRepositoryImpl
 import com.konhit.financeapp.data.repository.SettingsRepositoryImpl
 import com.konhit.financeapp.data.repository.TransactionRepositoryImpl
 import com.konhit.financeapp.db.DatabaseFactory
@@ -12,12 +13,14 @@ import com.konhit.financeapp.db.DatabaseHolder
 import com.konhit.financeapp.domain.repository.AccountRepository
 import com.konhit.financeapp.domain.repository.CategoryRepository
 import com.konhit.financeapp.domain.repository.CurrencyRepository
+import com.konhit.financeapp.domain.repository.ScheduledTransactionRepository
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.repository.TransactionRepository
 import com.konhit.financeapp.domain.usecase.ComputeBalanceUseCase
 import com.konhit.financeapp.domain.usecase.ComputeBudgetUsageUseCase
 import com.konhit.financeapp.domain.usecase.InitialiseFileUseCase
 import com.konhit.financeapp.domain.usecase.OpenFileUseCase
+import com.konhit.financeapp.domain.usecase.ProcessDueScheduledUseCase
 import com.konhit.financeapp.feature.FeatureFlags
 import com.konhit.financeapp.drive.DriveAuthManager
 import com.konhit.financeapp.drive.DriveConflictDetector
@@ -58,6 +61,7 @@ val sharedModule = module {
     single<TransactionRepository>  { TransactionRepositoryImpl(get(), get()) }
     single<CategoryRepository>     { CategoryRepositoryImpl(get()) }
     single<CurrencyRepository>     { CurrencyRepositoryImpl(get()) }
+    single<ScheduledTransactionRepository> { ScheduledTransactionRepositoryImpl(get(), get()) }
 
     single { FeatureFlags() }
 
@@ -65,4 +69,5 @@ val sharedModule = module {
     factory { ComputeBudgetUsageUseCase() }
     factory { InitialiseFileUseCase(get(), get(), get(), get(), get()) }
     factory { OpenFileUseCase(get(), get(), get()) }
+    factory { ProcessDueScheduledUseCase(get(), get(), get(), get()) }
 }

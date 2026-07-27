@@ -1,6 +1,7 @@
 package com.konhit.financeapp.android.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -13,24 +14,33 @@ import com.konhit.financeapp.android.ui.screens.currencies.CurrenciesScreen
 import com.konhit.financeapp.android.ui.screens.filter.FilterScreen
 import com.konhit.financeapp.android.ui.screens.firstlaunch.FirstLaunchScreen
 import com.konhit.financeapp.android.ui.screens.main.MainScreen
+import com.konhit.financeapp.android.ui.screens.scheduled.ScheduledEditScreen
+import com.konhit.financeapp.android.ui.screens.scheduled.ScheduledListScreen
 import com.konhit.financeapp.android.ui.screens.settings.SettingsScreen
 import com.konhit.financeapp.android.ui.screens.transaction.TransactionScreen
 
 @Composable
-fun AppNavGraph(startDestination: String) {
+fun AppNavGraph(
+    startDestination: String,
+    onDatabaseReady: () -> Unit = {}
+) {
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = startDestination) {
 
         composable(Routes.FIRST_LAUNCH) {
             FirstLaunchScreen(
-                onFileReady = { navController.navigate(Routes.MAIN) {
-                    popUpTo(Routes.FIRST_LAUNCH) { inclusive = true }
-                }}
+                onFileReady = {
+                    onDatabaseReady()
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.FIRST_LAUNCH) { inclusive = true }
+                    }
+                }
             )
         }
 
         composable(Routes.MAIN) {
+            LaunchedEffect(Unit) { onDatabaseReady() }
             MainScreen(
                 onAccountClick = { id -> navController.navigate(Routes.account(id)) },
                 onSettingsClick = { navController.navigate(Routes.SETTINGS) },
@@ -44,6 +54,7 @@ fun AppNavGraph(startDestination: String) {
                 onAccountsClick = { navController.navigate(Routes.ACCOUNTS) },
                 onCategoriesClick = { navController.navigate(Routes.CATEGORIES) },
                 onCurrenciesClick = { navController.navigate(Routes.CURRENCIES) },
+                onScheduledClick = { navController.navigate(Routes.SCHEDULED) },
                 onCloseDatabase = {
                     navController.navigate(Routes.FIRST_LAUNCH) {
                         popUpTo(Routes.MAIN) { inclusive = true }
@@ -62,6 +73,26 @@ fun AppNavGraph(startDestination: String) {
 
         composable(Routes.CURRENCIES) {
             CurrenciesScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.SCHEDULED) {
+            ScheduledListScreen(
+                onAdd = { navController.navigate(Routes.scheduledEdit()) },
+                onEdit = { bdId -> navController.navigate(Routes.scheduledEdit(bdId)) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.SCHEDULED_EDIT,
+            arguments = listOf(navArgument("bdId") { type = NavType.LongType; defaultValue = -1L })
+        ) { backStack ->
+            val bdId = backStack.arguments?.getLong("bdId")?.takeIf { it != -1L }
+            ScheduledEditScreen(
+                editBdId = bdId,
+                onSaved = { navController.popBackStack() },
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(

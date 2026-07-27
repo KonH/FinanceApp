@@ -1,0 +1,71 @@
+CREATE TABLE IF NOT EXISTS BILLSDEPOSITS_V1 (
+    BDID                INTEGER PRIMARY KEY,
+    ACCOUNTID           INTEGER NOT NULL,
+    TOACCOUNTID         INTEGER,
+    PAYEEID             INTEGER NOT NULL,
+    TRANSCODE           TEXT    NOT NULL,
+    TRANSAMOUNT         REAL    NOT NULL,
+    STATUS              TEXT,
+    TRANSACTIONNUMBER   TEXT,
+    NOTES               TEXT,
+    CATEGID             INTEGER,
+    TRANSDATE           TEXT,
+    FOLLOWUPID          INTEGER,
+    TOTRANSAMOUNT       REAL,
+    REPEATS             INTEGER,
+    NEXTOCCURRENCEDATE  TEXT,
+    NUMOCCURRENCES      INTEGER,
+    COLOR               INTEGER DEFAULT -1
+);
+
+selectAllOrdered:
+SELECT *
+FROM BILLSDEPOSITS_V1
+ORDER BY NEXTOCCURRENCEDATE ASC, BDID ASC;
+
+selectById:
+SELECT *
+FROM BILLSDEPOSITS_V1
+WHERE BDID = :bdId;
+
+selectDue:
+SELECT *
+FROM BILLSDEPOSITS_V1
+WHERE substr(NEXTOCCURRENCEDATE, 1, 10) <= :today
+ORDER BY NEXTOCCURRENCEDATE ASC, BDID ASC;
+
+insert:
+INSERT INTO BILLSDEPOSITS_V1 (
+    BDID, ACCOUNTID, TOACCOUNTID, PAYEEID,
+    TRANSCODE, TRANSAMOUNT, STATUS, TRANSACTIONNUMBER, NOTES, CATEGID,
+    TRANSDATE, FOLLOWUPID, TOTRANSAMOUNT, REPEATS,
+    NEXTOCCURRENCEDATE, NUMOCCURRENCES, COLOR
+) VALUES (
+    :bdId, :accountId, :toAccountId, :payeeId,
+    :transCode, :transAmount, :status, :transactionNumber, :notes, :categId,
+    :transDate, :followupId, :toTransAmount, :repeats,
+    :nextOccurrenceDate, :numOccurrences, :color
+);
+
+update:
+UPDATE BILLSDEPOSITS_V1
+SET ACCOUNTID          = :accountId,
+    TOACCOUNTID        = :toAccountId,
+    PAYEEID            = :payeeId,
+    TRANSCODE          = :transCode,
+    TRANSAMOUNT        = :transAmount,
+    STATUS             = :status,
+    TRANSACTIONNUMBER  = :transactionNumber,
+    NOTES              = :notes,
+    CATEGID            = :categId,
+    TRANSDATE          = :transDate,
+    FOLLOWUPID         = :followupId,
+    TOTRANSAMOUNT      = :toTransAmount,
+    REPEATS            = :repeats,
+    NEXTOCCURRENCEDATE = :nextOccurrenceDate,
+    NUMOCCURRENCES     = :numOccurrences,
+    COLOR              = :color
+WHERE BDID = :bdId;
+
+delete:
+DELETE FROM BILLSDEPOSITS_V1 WHERE BDID = :bdId;

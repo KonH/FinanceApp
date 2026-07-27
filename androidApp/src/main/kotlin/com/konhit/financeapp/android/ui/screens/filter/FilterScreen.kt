@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.EventRepeat
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
@@ -417,7 +418,19 @@ private fun FilterTransactionRow(
     val currency = accountCurrenciesMap[transaction.accountId]
 
     ListItem(
-        headlineContent = { Text(categories[transaction.categId] ?: transaction.notes ?: "") },
+        headlineContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (transaction.fromSchedule) {
+                    Icon(
+                        Icons.Default.EventRepeat,
+                        contentDescription = "From schedule",
+                        modifier = Modifier.padding(end = 6.dp).size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Text(categories[transaction.categId] ?: transaction.notes ?: "")
+            }
+        },
         supportingContent = {
             Text("${transaction.transDate.substringBefore('T')}  ·  $accountName")
         },

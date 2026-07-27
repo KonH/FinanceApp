@@ -41,7 +41,7 @@ INSERT INTO CHECKINGACCOUNT_V1 (
     :transCode, :transAmount, :toTransAmount,
     '', NULL, :notes, :categId,
     :transDate, :lastUpdatedTime, NULL,
-    -1, -1
+    :followupId, -1
 );
 
 update:
