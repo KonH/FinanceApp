@@ -31,33 +31,55 @@ class SyncCoordinator(
             val remoteTime = driveClient.getRemoteModifiedTime(fileId)
             val lastSyncMs = settings.getLastSyncTime()
             val lastSyncTime = lastSyncMs?.let { Instant.fromEpochMilliseconds(it) }
+            val pendingUpload = settings.getPendingUpload()
 
-            // Force conflict when local has unuploaded changes so they are never silently overwritten
-            val conflict = if (settings.getPendingUpload() && localFile.exists()) {
-                ConflictResult.Conflict(remoteTime, lastSyncTime ?: remoteTime)
-            } else {
-                conflictDetector.check(remoteTime, lastSyncTime)
-            }
-
-            when (conflict) {
+            when (val conflict = conflictDetector.check(remoteTime, lastSyncTime, pendingUpload)) {
                 is ConflictResult.Conflict -> {
                     if (localFile.exists()) {
+                        // Same bytes as Drive → false conflict (e.g. upload landed but
+                        // lastSyncTime / pendingUpload were not persisted).
+                        val remoteMd5 = driveClient.getRemoteMd5Checksum(fileId)
+                        val localMd5 = localFile.md5HexOrNull()
+                        if (remoteMd5 != null && localMd5 != null && remoteMd5.equals(localMd5, ignoreCase = true)) {
+                            openAndPersistLocalFile(localFile, accessMode)
+                            settings.saveLastSyncTime(remoteTime.toEpochMilliseconds())
+                            settings.savePendingUpload(false)
+                            _syncState.value = SyncState.Idle
+                            return
+                        }
                         openAndPersistLocalFile(localFile, accessMode)
                         _syncState.value = SyncState.Conflict(conflict.remoteTime, conflict.localSyncTime)
                         return
                     }
                     // No local copy — fall through and download remote
                     driveClient.download(fileId, localFile)
+                    openAndPersistLocalFile(localFile, accessMode)
+                    settings.saveLastSyncTime(remoteTime.toEpochMilliseconds())
+                    settings.savePendingUpload(false)
+                    _syncState.value = SyncState.Idle
+                }
+                is ConflictResult.KeepLocalAndUpload -> {
+                    if (localFile.exists()) {
+                        openAndPersistLocalFile(localFile, accessMode)
+                        // Push local changes; uploadCurrent updates lastSync / pending flags.
+                        uploadCurrent()
+                        return
+                    }
+                    // Pending flag without a local file — treat as normal download.
+                    driveClient.download(fileId, localFile)
+                    openAndPersistLocalFile(localFile, accessMode)
+                    settings.saveLastSyncTime(remoteTime.toEpochMilliseconds())
+                    settings.savePendingUpload(false)
+                    _syncState.value = SyncState.Idle
                 }
                 is ConflictResult.NoConflict -> {
                     driveClient.download(fileId, localFile)
+                    openAndPersistLocalFile(localFile, accessMode)
+                    settings.saveLastSyncTime(remoteTime.toEpochMilliseconds())
+                    settings.savePendingUpload(false)
+                    _syncState.value = SyncState.Idle
                 }
             }
-
-            openAndPersistLocalFile(localFile, accessMode)
-            settings.saveLastSyncTime(remoteTime.toEpochMilliseconds())
-            settings.savePendingUpload(false)
-            _syncState.value = SyncState.Idle
         } catch (e: Exception) {
             Log.e("SyncCoordinator", "downloadAndOpen failed", e)
             if (localFile.exists()) {
@@ -124,4 +146,19 @@ class SyncCoordinator(
         dbHolder.open(conn.database, conn.driver, file, payeeId)
         settings.saveLocalFilePath(file.absolutePath)
     }
+}
+
+private fun File.md5HexOrNull(): String? = try {
+    val digest = java.security.MessageDigest.getInstance("MD5")
+    inputStream().use { input ->
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            digest.update(buffer, 0, read)
+        }
+    }
+    digest.digest().joinToString("") { b -> "%02x".format(b) }
+} catch (_: Exception) {
+    null
 }
