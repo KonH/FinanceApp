@@ -33,10 +33,9 @@ class DriveConflictDetector {
         lastSyncTime: Instant?,
         pendingUpload: Boolean
     ): ConflictResult {
-        val remoteChanged = lastSyncTime != null && remoteTime > lastSyncTime
         return when {
-            pendingUpload && remoteChanged ->
-                ConflictResult.Conflict(remoteTime, lastSyncTime!!)
+            pendingUpload && lastSyncTime != null && remoteTime > lastSyncTime ->
+                ConflictResult.Conflict(remoteTime, lastSyncTime)
             pendingUpload ->
                 ConflictResult.KeepLocalAndUpload
             else ->
