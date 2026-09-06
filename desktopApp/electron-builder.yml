@@ -1,0 +1,57 @@
+appId: com.konhit.financeapp.desktop
+productName: FinanceApp
+copyright: Copyright © KonH
+
+directories:
+  output: release
+  buildResources: resources
+
+# Only the compiled output ships; sources and tests stay out of the package.
+files:
+  - dist/**/*
+  - package.json
+  - '!**/*.map'
+
+# sql.js is the only runtime dependency; its wasm is read with fs from inside
+# the asar, so nothing needs to be unpacked.
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: resources/icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: FinanceApp
+
+# The portable build keeps a fixed file name so a desktop shortcut to it keeps
+# working after an update; the version lives in the app, not in the path.
+portable:
+  artifactName: ${productName}.exe
+  unpackDirName: FinanceApp
+
+# macOS is optional: build it on a Mac with `npm run package:mac`.
+mac:
+  category: public.app-category.finance
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  icon: resources/icon.png
+  # The app only reads files the user picks and talks to Google Drive; no
+  # entitlements beyond the defaults are required.
+
+dmg:
+  title: FinanceApp ${version}
+
+fileAssociations:
+  - ext: mmb
+    name: MoneyManagerEx database
+    role: Editor

@@ -100,3 +100,8 @@ example.mmb
 .tmp/*
 TODO.md
 .claude/scheduled_tasks.lock
+
+### Electron desktop app
+desktopApp/node_modules/
+desktopApp/dist/
+desktopApp/release/

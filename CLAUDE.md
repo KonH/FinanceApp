@@ -8,6 +8,9 @@ App version is set in `androidApp/build.gradle.kts` → `versionName`. Format: `
 **Bump `versionName` by `0.01` after each completed task or fix before committing.**
 The Settings screen reads `BuildConfig.VERSION_NAME` — no other file needs updating.
 
+The desktop app mirrors that version in `desktopApp/package.json` → `version` (Android `1.07` ≙
+desktop `1.7.0`). Bump it together with `versionName` whenever the desktop app changes.
+
 ## Build & Run
 
 **Always build using the `/build` skill** — invoke it via `Skill("build")`. Never run `gradlew` directly.
@@ -38,6 +41,7 @@ The skill runs `build.ps1` via `powershell -File build.ps1`, then reads the last
 ```
 shared/      — Kotlin Multiplatform module: domain logic, database, Drive sync
 androidApp/  — Android Compose UI + ViewModels + DI wiring
+desktopApp/  — Electron + React desktop client (Windows / macOS), see desktopApp/README.md
 ```
 
 ## Tech Stack
@@ -78,6 +82,42 @@ androidApp/  — Android Compose UI + ViewModels + DI wiring
 ### Navigation Routes
 
 `Routes.kt` — `first_launch`, `main`, `settings`, `account/{accountId}`, `transaction?accountId={accountId}&transId={transId}`
+
+## Desktop App (`desktopApp/`)
+
+Chromium-based (Electron) client with feature parity to the Android app, on the same `.mmb` files.
+Never build it with Gradle — it is an npm project:
+
+```bash
+cd desktopApp
+npm install
+npm start          # build + run
+npm run dev        # Vite dev server + Electron
+npm test           # domain + real-.mmb tests (node:test, no Electron/device needed)
+npm run typecheck  # main process + renderer
+npm run package:win  # NSIS installer + portable exe into desktopApp/release
+```
+
+Structure:
+
+- `src/shared/` — the Kotlin domain ported to TypeScript (types, MMEX dates, category tree,
+  balance, budget, recurrence, amount formatting). Used by both Electron processes.
+- `src/main/` — main process: `db/database.ts` (sql.js + `dbHolder`), `repositories.ts` (the SQL of
+  the `.sq` files), `settings.ts` (JSON store replacing DataStore), `drive.ts` (OAuth loopback +
+  Drive REST), `sync.ts` (`SyncCoordinator` port), `scheduled.ts`, `ipc.ts`, `main.ts`
+- `src/preload/` — `contextBridge` with `invoke(channel, …)` plus sync/menu events
+- `src/renderer/` — React screens mirroring the Compose screens one-to-one
+
+Rules specific to this module:
+
+- All file and network access lives in the main process; the renderer is sandboxed
+  (`contextIsolation: true`, `nodeIntegration: false`) and the built page runs under a strict CSP.
+- Every mutation goes through `mutate()` in `ipc.ts`: it enforces read-only mode, writes the
+  `.mmb` back to disk and then calls `syncCoordinator.uploadCurrent()`.
+- Saving uses `db.export()` (the SQLite image) written to a temp file and renamed — existing
+  tables, indexes, triggers, views and `user_version` are never touched.
+- When domain rules change on either side, change both: the Kotlin file under `shared/` and its
+  port under `desktopApp/src/shared/`.
 
 ## MMEX Database Compatibility (Critical)
 
@@ -136,3 +176,8 @@ Key assertions:
 - `TC-10` — 23 tables, 0 triggers, 0 views after any write
 
 Place `example.mmb` in `shared/src/androidTest/assets/` for instrumented tests.
+
+The desktop app covers the same cases in `desktopApp/tests/` (`npm test`): schema creation,
+insert defaults, balance formula, schema/`user_version` preservation on write, category tree,
+recurrence math and amount formatting. These run on generated `.mmb` files, so no fixture or
+device is required.

@@ -1,12 +1,13 @@
 # FinanceApp
 
-**Personal finance for Android — built on the [MoneyManagerEx](https://moneymanagerex.org/) `.mmb` format.**
+**Personal finance for Android and the desktop — built on the [MoneyManagerEx](https://moneymanagerex.org/) `.mmb` format.**
 
 Open the same file on your phone and on desktop MMEX. No custom backend. Sync through Google Drive, or keep everything local.
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/compose)
 [![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com/)
+[![Electron](https://img.shields.io/badge/Desktop-Electron%2044-47848F?logo=electron&logoColor=white)](desktopApp/README.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
@@ -64,11 +65,13 @@ Most mobile finance apps lock you into their own database. FinanceApp reads and 
 
 ## Architecture
 
-Two Gradle modules. Domain and database live in `:shared` so a desktop Compose target can join later without rewriting the ledger.
+Two Gradle modules plus a Chromium-based desktop client. Domain and database live in `:shared`;
+the desktop app ports that same domain to TypeScript so both clients apply identical MMEX rules.
 
 ```
 shared/       Kotlin Multiplatform — models, SQLDelight, Drive, sync
 androidApp/   Jetpack Compose UI, ViewModels, Koin app module
+desktopApp/   Electron + React (Windows / macOS) — see desktopApp/README.md
 ```
 
 ```mermaid
@@ -100,6 +103,16 @@ Writes never invent extra tables. SQLDelight generates queries against the MMEX 
 
 **Requires Android 8.0 (API 26)+.** Compile / target SDK 35. JDK 17.
 
+Desktop client:
+
+| Layer | Choice |
+|---|---|
+| Shell | Electron 44 (Chromium) — Windows, macOS |
+| UI | React 19 + TypeScript, Material 3 theme (light/dark follows the OS) |
+| Database | SQLite via WebAssembly (`sql.js`) directly on the `.mmb` |
+| Sync | Google Drive REST + OAuth 2.0 loopback flow |
+| Packaging | electron-builder (NSIS, portable, dmg, zip) |
+
 ---
 
 ## Getting started
@@ -125,6 +138,18 @@ From the command line:
 
 On Windows, `build.ps1` sets `JAVA_HOME` to the Android Studio JBR and writes the full Gradle log to `.tmp/gradle/log.txt`.
 
+### Desktop (Windows / macOS)
+
+```bash
+cd desktopApp
+npm install
+npm start              # build and run the Electron app
+npm run dev            # Vite dev server + Electron
+npm run package:win    # NSIS installer + portable exe in desktopApp/release
+```
+
+Full documentation: [`desktopApp/README.md`](desktopApp/README.md).
+
 ### Google Drive (optional)
 
 Drive sync needs a Google Cloud OAuth client and `androidApp/google-services.json` (package `com.konhit.financeapp`). Register the SHA-1 of your debug (and release) keystore on that client. The app also works fully offline with a local `.mmb`.
@@ -148,6 +173,13 @@ Single class:
 ```
 
 Place `example.mmb` in `shared/src/androidTest/assets/` for instrumented tests (the file is gitignored).
+
+The desktop app carries the same cases as plain Node tests — they create real `.mmb` files, check
+insert defaults, balances and schema preservation, and need neither a device nor Electron:
+
+```bash
+cd desktopApp && npm test
+```
 
 ---
 
