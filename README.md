@@ -36,6 +36,8 @@ Most mobile finance apps lock you into their own database. FinanceApp reads and 
 
 **Day to day**
 - Transaction list per account, plus a global filter (notes, amount, category, account, date range)
+- Filtered balance in a chosen base currency, converted at each transaction's date with
+  historical rates from [Frankfurter](https://frankfurter.dev) (cached on the device)
 - Inline calculator when entering amounts
 - Scheduled / recurring transactions (`BILLSDEPOSITS_V1`) — approve or skip when due
 - Monthly spending budget per currency, with progress vs. expected pace

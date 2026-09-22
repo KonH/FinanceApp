@@ -5,6 +5,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import com.konhit.financeapp.data.repository.AccountRepositoryImpl
 import com.konhit.financeapp.data.repository.CategoryRepositoryImpl
 import com.konhit.financeapp.data.repository.CurrencyRepositoryImpl
+import com.konhit.financeapp.data.repository.ExchangeRateRepositoryImpl
 import com.konhit.financeapp.data.repository.ScheduledTransactionRepositoryImpl
 import com.konhit.financeapp.data.repository.SettingsRepositoryImpl
 import com.konhit.financeapp.data.repository.TransactionRepositoryImpl
@@ -13,6 +14,7 @@ import com.konhit.financeapp.db.DatabaseHolder
 import com.konhit.financeapp.domain.repository.AccountRepository
 import com.konhit.financeapp.domain.repository.CategoryRepository
 import com.konhit.financeapp.domain.repository.CurrencyRepository
+import com.konhit.financeapp.domain.repository.ExchangeRateRepository
 import com.konhit.financeapp.domain.repository.ScheduledTransactionRepository
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.repository.TransactionRepository
@@ -28,6 +30,7 @@ import com.konhit.financeapp.drive.DriveFileClient
 import com.konhit.financeapp.drive.SyncCoordinator
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
+import java.io.File
 
 val sharedModule = module {
 
@@ -62,6 +65,9 @@ val sharedModule = module {
     single<CategoryRepository>     { CategoryRepositoryImpl(get()) }
     single<CurrencyRepository>     { CurrencyRepositoryImpl(get()) }
     single<ScheduledTransactionRepository> { ScheduledTransactionRepositoryImpl(get(), get()) }
+    single<ExchangeRateRepository> {
+        ExchangeRateRepositoryImpl(File(androidContext().filesDir, "exchange_rates.json"))
+    }
 
     single { FeatureFlags() }
 

@@ -3,11 +3,13 @@ import path from 'node:path';
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron';
 import { MmexDatabase, dbHolder } from './db/database';
 import * as drive from './drive';
+import * as rates from './rates';
 import { accountRepo, categoryRepo, currencyRepo, infoRepo, scheduledRepo, transactionRepo } from './repositories';
 import * as scheduled from './scheduled';
 import { settingsStore } from './settings';
 import { syncCoordinator } from './sync';
 import { descendantIds } from '../shared/category';
+import type { RateFetch, RateRow } from '../shared/rates';
 import type {
   Account,
   AccessMode,
@@ -399,6 +401,26 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       const [currencyId, amount] = args as unknown as [number, number | null];
       settingsStore.setBudget(currencyId, amount);
       return ok();
+    },
+
+    // ---------------------------------------------------------------- rates
+    'rates:cached': () => rates.cachedRates(),
+
+    'rates:supported': async (): Promise<Result<string[]>> => {
+      try {
+        return ok(await rates.supportedCodes());
+      } catch (error) {
+        return fail(error);
+      }
+    },
+
+    'rates:fetch': async (...args: never[]): Promise<Result<RateRow[]>> => {
+      const [request] = args as unknown as [RateFetch];
+      try {
+        return ok(await rates.fetchRates(request));
+      } catch (error) {
+        return fail(error);
+      }
     },
 
     // ----------------------------------------------------------------- sync

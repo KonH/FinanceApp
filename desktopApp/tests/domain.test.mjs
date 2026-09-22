@@ -9,6 +9,7 @@ const category = require('../dist/main/shared/category.js');
 const dates = require('../dist/main/shared/mmexDate.js');
 const recurrence = require('../dist/main/shared/recurrence.js');
 const format = require('../dist/main/shared/format.js');
+const rates = require('../dist/main/shared/rates.js');
 
 test('balance formula matches ComputeBalanceUseCase', () => {
   assert.equal(
@@ -135,4 +136,108 @@ test('amount formatting mirrors CurrencyFormatter', () => {
   assert.equal(format.formatAmount(12, null), '12.00');
   assert.equal(format.amountToInput(12), '12');
   assert.equal(format.amountToInput(12.5), '12.5');
+});
+
+test('rate plan groups by month with lookback and clamps to today', () => {
+  const today = '2026-09-22';
+  const plan = rates.planFetches(
+    rates.emptyRateTable(),
+    [
+      { code: 'RSD', date: '2026-08-03' },
+      { code: 'USD', date: '2026-08-20' },
+      { code: 'EUR', date: '2026-08-20' },
+      { code: 'RSD', date: '2026-12-01' }
+    ],
+    today
+  );
+  assert.deepEqual(plan, [
+    { month: '2026-08', from: '2026-07-25', to: '2026-08-31', codes: ['RSD', 'USD'] },
+    { month: '2026-09', from: '2026-08-25', to: today, codes: ['RSD'] }
+  ]);
+});
+
+test('rate plan skips covered and unsupported codes, refetches partial months', () => {
+  const august = rates.mergeRates(
+    rates.emptyRateTable(),
+    { month: '2026-08', from: '2026-07-25', to: '2026-08-31', codes: ['RSD'] },
+    []
+  );
+  const needs = [
+    { code: 'RSD', date: '2026-08-10' },
+    { code: 'XYZ', date: '2026-08-10' }
+  ];
+  assert.deepEqual(rates.planFetches(august, needs, '2026-09-22', new Set(['RSD', 'USD'])), []);
+
+  const partial = rates.mergeRates(
+    rates.emptyRateTable(),
+    { month: '2026-09', from: '2026-08-25', to: '2026-09-10', codes: ['RSD'] },
+    []
+  );
+  assert.equal(rates.planFetches(partial, [{ code: 'RSD', date: '2026-09-15' }], '2026-09-22').length, 1);
+});
+
+test('conversion crosses through EUR and falls back over weekends', () => {
+  const table = rates.mergeRates(
+    rates.emptyRateTable(),
+    { month: '2019-05', from: '2019-04-24', to: '2019-05-31', codes: ['RSD', 'USD'] },
+    [
+      { date: '2019-05-03', code: 'RSD', rate: 118 },
+      { date: '2019-05-03', code: 'USD', rate: 1.18 }
+    ]
+  );
+  // Saturday 2019-05-04 has no row: Friday's rates are used.
+  assert.ok(Math.abs(rates.convert(table, 1180, 'RSD', 'USD', '2019-05-04') - 11.8) < 1e-9);
+  assert.ok(Math.abs(rates.convert(table, 118, 'RSD', 'EUR', '2019-05-03') - 1) < 1e-9);
+  assert.equal(rates.convert(table, 1, 'RSD', 'EUR', '2019-05-20'), null);
+});
+
+test('filtered base balance counts transfers only for a single account', () => {
+  const tx = (transId, type, accountId, transAmount, toAccountId = -1, toTransAmount = 0) => ({
+    transId,
+    accountId,
+    toAccountId,
+    payeeId: 1,
+    type,
+    transAmount,
+    toTransAmount,
+    categId: null,
+    transDate: '2019-05-03T00:00:00',
+    lastUpdatedTime: null,
+    notes: null,
+    followupId: -1
+  });
+  const txs = [
+    tx(1, 'Deposit', 1, 236),
+    tx(2, 'Withdrawal', 2, 5),
+    tx(3, 'Transfer', 2, 1, 1, 118)
+  ];
+  const codes = new Map([
+    [1, 'RSD'],
+    [2, 'EUR']
+  ]);
+  const table = rates.mergeRates(
+    rates.emptyRateTable(),
+    { month: '2019-05', from: '2019-04-24', to: '2019-05-31', codes: ['RSD'] },
+    [{ date: '2019-05-03', code: 'RSD', rate: 118 }]
+  );
+  const today = '2026-09-22';
+
+  const all = rates.computeBaseBalance(rates.balanceLegs(txs, null, codes, today), 'EUR', table);
+  assert.ok(Math.abs(all.balance.income - 2) < 1e-9);
+  assert.ok(Math.abs(all.balance.expense - 5) < 1e-9);
+  assert.ok(Math.abs(all.balance.net + 3) < 1e-9);
+
+  const rsd = rates.computeBaseBalance(rates.balanceLegs(txs, 1, codes, today), 'RSD', table);
+  assert.ok(Math.abs(rsd.balance.net - (236 + 118 - 5 * 118)) < 1e-9);
+});
+
+test('filtered base balance reports currencies without a rate', () => {
+  const legs = [{ code: 'USD', date: '2019-05-03', amount: 10 }];
+  const result = rates.computeBaseBalance(legs, 'EUR', rates.emptyRateTable());
+  assert.equal(result.balance, null);
+  assert.deepEqual(result.missingCodes, ['USD']);
+  assert.deepEqual(rates.balanceNeeds(legs, 'EUR'), [
+    { code: 'USD', date: '2019-05-03' },
+    { code: 'EUR', date: '2019-05-03' }
+  ]);
 });

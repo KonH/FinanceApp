@@ -29,6 +29,7 @@ import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.Transaction
 import com.konhit.financeapp.domain.model.TransactionType
 import com.konhit.financeapp.domain.model.buildPath
+import com.konhit.financeapp.domain.rates.BaseCurrencyBalance
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -122,7 +123,13 @@ fun FilterScreen(onBack: () -> Unit, onEditTransaction: (Long) -> Unit) {
                         categoryList = state.categoryList,
                         onFilterChanged = { viewModel.onFilterChanged(it) },
                         onShowStartDatePicker = { showStartDatePicker = true },
-                        onShowEndDatePicker = { showEndDatePicker = true }
+                        onShowEndDatePicker = { showEndDatePicker = true },
+                        baseCurrencyOptions = state.baseCurrencyOptions,
+                        baseCurrencyId = state.baseCurrencyId,
+                        rateProgress = state.rateProgress,
+                        rateError = state.rateError,
+                        onBaseCurrencyChanged = { viewModel.onBaseCurrencyChanged(it) },
+                        onRetryRates = { viewModel.onRetryRates() }
                     )
                 }
             }
@@ -147,7 +154,11 @@ fun FilterScreen(onBack: () -> Unit, onEditTransaction: (Long) -> Unit) {
                 HorizontalDivider()
             }
             item {
-                FilterBalanceSummary(summaries = state.flowSummaries)
+                FilterBalanceSummary(
+                    summaries = state.flowSummaries,
+                    baseCurrency = state.currencies.find { it.id == state.baseCurrencyId },
+                    baseBalance = state.baseBalance
+                )
             }
         }
     }
@@ -179,7 +190,13 @@ private fun FilterOptionsPanel(
     categoryList: List<Category>,
     onFilterChanged: (TransactionFilter) -> Unit,
     onShowStartDatePicker: () -> Unit,
-    onShowEndDatePicker: () -> Unit
+    onShowEndDatePicker: () -> Unit,
+    baseCurrencyOptions: List<Currency>,
+    baseCurrencyId: Long?,
+    rateProgress: Int?,
+    rateError: String?,
+    onBaseCurrencyChanged: (Long?) -> Unit,
+    onRetryRates: () -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Text("Type", style = MaterialTheme.typography.labelMedium)
@@ -306,7 +323,73 @@ private fun FilterOptionsPanel(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(Modifier.height(12.dp))
+        Text("Base currency", style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(4.dp))
+        BaseCurrencyDropdown(
+            currencies = baseCurrencyOptions,
+            selectedCurrencyId = baseCurrencyId,
+            onSelect = onBaseCurrencyChanged
+        )
+        if (rateProgress != null) {
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { rateProgress / 100f },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                "Loading exchange rates… $rateProgress%",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        } else if (rateError != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    rateError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = onRetryRates) { Text("Retry") }
+            }
+        }
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BaseCurrencyDropdown(
+    currencies: List<Currency>,
+    selectedCurrencyId: Long?,
+    onSelect: (Long?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val label: (Currency) -> String = { c -> c.name + (c.currencySymbol?.let { " ($it)" } ?: "") }
+    val selectedLabel = currencies.find { it.id == selectedCurrencyId }?.let(label) ?: "None"
+
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("None") },
+                onClick = { onSelect(null); expanded = false }
+            )
+            currencies.forEach { currency ->
+                DropdownMenuItem(
+                    text = { Text(label(currency)) },
+                    onClick = { onSelect(currency.id); expanded = false }
+                )
+            }
+        }
     }
 }
 
@@ -505,11 +588,32 @@ private fun FilterTransactionRow(
 }
 
 @Composable
-private fun FilterBalanceSummary(summaries: List<CurrencyFlowSummary>) {
-    if (summaries.isEmpty()) return
+private fun FilterBalanceSummary(
+    summaries: List<CurrencyFlowSummary>,
+    baseCurrency: Currency?,
+    baseBalance: BaseCurrencyBalance?
+) {
+    if (summaries.isEmpty() && baseBalance == null) return
     HorizontalDivider()
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text("Net flow", style = MaterialTheme.typography.labelMedium)
+        if (baseBalance != null) {
+            Text(
+                "Balance in ${baseCurrency?.currencySymbol ?: baseCurrency?.name ?: ""}",
+                style = MaterialTheme.typography.labelMedium
+            )
+            Text(
+                formatAmount(baseBalance.net, baseCurrency),
+                style = MaterialTheme.typography.titleMedium,
+                color = if (baseBalance.net < 0) Color(0xFFC62828) else Color(0xFF2E7D32)
+            )
+            Text(
+                "Income ${formatAmount(baseBalance.income, baseCurrency)}  ·  Expenses ${formatAmount(baseBalance.expense, baseCurrency)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+        if (summaries.isNotEmpty()) Text("Net flow", style = MaterialTheme.typography.labelMedium)
         summaries.forEach { summary ->
             Text(formatAmount(summary.net, summary.currency), style = MaterialTheme.typography.bodyMedium)
             Text(

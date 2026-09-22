@@ -12,6 +12,7 @@ import type {
   Transaction,
   TransactionType
 } from '../shared/types';
+import type { RateFetch, RateRow, RateTable } from '../shared/rates';
 
 export interface Snapshot {
   dbOpen: boolean;
@@ -107,6 +108,10 @@ export const api = {
     invoke<Result>('settings:setUseLatestCategory', type, enabled),
   setBudget: (currencyId: number, amount: number | null) =>
     invoke<Result>('settings:setBudget', currencyId, amount),
+
+  cachedRates: () => invoke<RateTable>('rates:cached'),
+  supportedRateCodes: () => invoke<Result<string[]>>('rates:supported'),
+  fetchRates: (request: RateFetch) => invoke<Result<RateRow[]>>('rates:fetch', request),
 
   syncState: () => invoke<SyncState>('sync:state'),
   syncNow: () => invoke<Result>('sync:upload'),

@@ -8,7 +8,16 @@ import { CategoryPickerDialog } from '../components/CategoryPickerDialog';
 import { TransactionRow } from '../components/TransactionRow';
 import { buildPath } from '../../shared/category';
 import { formatAmount } from '../../shared/format';
-import { datePart } from '../../shared/mmexDate';
+import { datePart, todayIso } from '../../shared/mmexDate';
+import {
+  balanceLegs,
+  balanceNeeds,
+  codeOf,
+  computeBaseBalance,
+  mergeRates,
+  planFetches,
+  type BaseCurrencyBalance
+} from '../../shared/rates';
 import {
   EMPTY_FILTER,
   TRANSACTION_TYPES,
@@ -16,6 +25,9 @@ import {
   type Transaction,
   type TransactionFilter
 } from '../../shared/types';
+
+const RATES_DEBOUNCE_MS = 300;
+const PARALLEL_FETCHES = 4;
 
 interface FlowSummary {
   currency: Currency;
@@ -39,6 +51,11 @@ export function FilterScreen({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [baseCurrencyId, setBaseCurrencyId] = useState<number | null>(null);
+  const [baseBalance, setBaseBalance] = useState<BaseCurrencyBalance | null>(null);
+  const [rateProgress, setRateProgress] = useState<number | null>(null);
+  const [rateError, setRateError] = useState<string | null>(null);
+  const [ratesAttempt, setRatesAttempt] = useState(0);
 
   const load = (): void => {
     void api.allTransactions().then(setAll);
@@ -109,6 +126,90 @@ export function FilterScreen({
       })
       .filter((entry): entry is FlowSummary => entry !== null);
   }, [filtered, store]);
+
+  /** Currencies present in the filtered transactions, plus the current choice. */
+  const baseCurrencyOptions = useMemo(() => {
+    const ids = new Set<number>();
+    for (const tx of filtered) {
+      const currency = store.accountCurrency(tx.accountId);
+      if (currency) ids.add(currency.id);
+      if (tx.type === 'Transfer') {
+        const toCurrency = store.accountCurrency(tx.toAccountId);
+        if (toCurrency) ids.add(toCurrency.id);
+      }
+    }
+    if (baseCurrencyId !== null) ids.add(baseCurrencyId);
+    return store.currencies.filter((c) => ids.has(c.id)).sort((a, b) => a.name.localeCompare(b.name));
+  }, [baseCurrencyId, filtered, store]);
+
+  const baseCurrency = store.currencies.find((c) => c.id === baseCurrencyId) ?? null;
+
+  // Converts the filtered list into the base currency at each transaction's date,
+  // downloading whatever rates the cache lacks first. Restarted on every change.
+  useEffect(() => {
+    if (!baseCurrency) {
+      setBaseBalance(null);
+      setRateProgress(null);
+      setRateError(null);
+      return;
+    }
+    let cancelled = false;
+    const today = todayIso();
+    const baseCode = codeOf(baseCurrency);
+    const accountCodes = new Map<number, string>();
+    for (const account of store.accounts) {
+      const currency = store.accountCurrency(account.id);
+      if (currency) accountCodes.set(account.id, codeOf(currency));
+    }
+    const legs = balanceLegs(filtered, filter.accountId, accountCodes, today);
+    const needs = balanceNeeds(legs, baseCode);
+
+    const run = async (): Promise<void> => {
+      let table = await api.cachedRates();
+      let fetches = planFetches(table, needs, today);
+      let failed = 0;
+      if (fetches.length > 0) {
+        if (cancelled) return;
+        setBaseBalance(null);
+        setRateProgress(0);
+        setRateError(null);
+        const supported = await api.supportedRateCodes();
+        if (supported.ok && supported.value) {
+          fetches = planFetches(table, needs, today, new Set(supported.value));
+        }
+        let next = 0;
+        let done = 0;
+        const worker = async (): Promise<void> => {
+          while (!cancelled && next < fetches.length) {
+            const request = fetches[next++];
+            const result = await api.fetchRates(request);
+            if (result.ok && result.value) table = mergeRates(table, request, result.value);
+            else failed++;
+            done++;
+            if (!cancelled) setRateProgress(Math.floor((done * 100) / fetches.length));
+          }
+        };
+        await Promise.all(Array.from({ length: PARALLEL_FETCHES }, worker));
+      }
+      if (cancelled) return;
+      const result = computeBaseBalance(legs, baseCode, table);
+      setBaseBalance(result.balance);
+      setRateProgress(null);
+      setRateError(
+        result.balance !== null
+          ? null
+          : failed > 0
+            ? "Couldn't load exchange rates. Check the connection and retry."
+            : `No exchange rate for ${result.missingCodes.join(', ')}`
+      );
+    };
+
+    const timer = setTimeout(() => void run(), RATES_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [baseCurrency, filter.accountId, filtered, ratesAttempt, store]);
 
   const categoryLabel =
     filter.categoryId !== null ? buildPath(store.categories, filter.categoryId) || 'All categories' : 'All categories';
@@ -261,12 +362,44 @@ export function FilterScreen({
             </Field>
 
             <div>
+              <SelectField
+                label="Base currency"
+                value={baseCurrencyId}
+                placeholder="None"
+                options={baseCurrencyOptions.map((c) => ({
+                  value: c.id,
+                  label: c.currencySymbol ? `${c.name} (${c.currencySymbol})` : c.name
+                }))}
+                onChange={setBaseCurrencyId}
+              />
+              {rateProgress !== null && (
+                <div style={{ marginTop: 8 }}>
+                  <div className="progress">
+                    <span style={{ width: `${rateProgress}%` }} />
+                  </div>
+                  <div className="muted small" style={{ marginTop: 4 }}>
+                    Loading exchange rates… {rateProgress}%
+                  </div>
+                </div>
+              )}
+              {rateProgress === null && rateError !== null && (
+                <div className="row" style={{ marginTop: 4 }}>
+                  <span className="small error-text">{rateError}</span>
+                  <button type="button" className="btn" onClick={() => setRatesAttempt((n) => n + 1)}>
+                    Retry
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div>
               <button
                 type="button"
                 className="btn"
                 onClick={() => {
                   setFilter({ ...EMPTY_FILTER });
                   setQuery('');
+                  setBaseCurrencyId(null);
                 }}
               >
                 Reset filters
@@ -298,9 +431,22 @@ export function FilterScreen({
         ))}
       </div>
 
-      {summaries.length > 0 && (
+      {(summaries.length > 0 || baseBalance !== null) && (
         <div className="footer">
-          <span className="field-label">Net flow</span>
+          {baseBalance !== null && baseCurrency && (
+            <div style={{ marginBottom: 8 }}>
+              <span className="field-label">Balance in {baseCurrency.currencySymbol || baseCurrency.name}</span>
+              <div className={`amount ${baseBalance.net < 0 ? 'withdrawal' : 'deposit'}`}
+                style={{ fontSize: 18, fontWeight: 600 }}>
+                {formatAmount(baseBalance.net, baseCurrency)}
+              </div>
+              <div className="muted small">
+                Income {formatAmount(baseBalance.income, baseCurrency)} · Expenses{' '}
+                {formatAmount(baseBalance.expense, baseCurrency)}
+              </div>
+            </div>
+          )}
+          {summaries.length > 0 && <span className="field-label">Net flow</span>}
           {summaries.map((summary) => (
             <div key={summary.currency.id} style={{ marginTop: 4 }}>
               <div className="amount">{formatAmount(summary.net, summary.currency)}</div>

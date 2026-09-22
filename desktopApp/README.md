@@ -55,7 +55,8 @@ Feature parity with the Android app:
 - **Transaction form** — deposit / withdrawal / transfer, category tree picker with search,
   inline calculator, destination amount mirrored for same-currency transfers, zero-destination guard
 - **Filter** — free-text search plus type, account, currency, category, date range and amount range,
-  with a per-currency net-flow summary
+  with a per-currency net-flow summary and an optional base currency: the filtered balance converted
+  at each transaction's date (Frankfurter rates, cached in `userData/exchange-rates.json`)
 - **Scheduled transactions** — the MMEX `BILLSDEPOSITS_V1` rules, a due prompt on start
   (approve / cancel once / delete), and the full recurrence editor
 - **Settings** — Drive connection, file path and access mode, accounts / categories / currencies /
