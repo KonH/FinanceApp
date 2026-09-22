@@ -50,7 +50,8 @@ Feature parity with the Android app:
 
 - **First launch** — create a new `.mmb`, open a local one, or pick one from Google Drive
 - **Accounts** — grouped by type, per-currency group totals and grand total, balance masking,
-  hidden accounts, budget chip, sync state
+  hidden accounts, budget chip, sync state, and an optional base currency (saved in settings) that
+  shows group and grand totals converted at today's rate
 - **Account ledger** — add / edit / delete transactions, balance as of any date
 - **Transaction form** — deposit / withdrawal / transfer, category tree picker with search,
   inline calculator, destination amount mirrored for same-currency transfers, zero-destination guard

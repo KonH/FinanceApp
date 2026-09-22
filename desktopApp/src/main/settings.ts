@@ -17,7 +17,8 @@ const DEFAULTS: AppSettings = {
   defaultCategoryIds: {},
   useLatestCategory: {},
   budgets: {},
-  hiddenAccountIds: []
+  hiddenAccountIds: [],
+  mainBaseCurrencyId: null
 };
 
 /** OAuth material and tokens live beside the settings, never inside the .mmb. */

@@ -241,3 +241,26 @@ test('filtered base balance reports currencies without a rate', () => {
     { code: 'EUR', date: '2019-05-03' }
   ]);
 });
+
+test('account totals convert into one currency and report missing rates', () => {
+  const table = rates.mergeRates(
+    rates.emptyRateTable(),
+    { month: '2026-09', from: '2026-08-25', to: '2026-09-23', codes: ['RSD', 'USD'] },
+    [
+      { date: '2026-09-22', code: 'RSD', rate: 117.5 },
+      { date: '2026-09-22', code: 'USD', rate: 1.15 }
+    ]
+  );
+  const amounts = [
+    ['RSD', 117500],
+    ['EUR', 100],
+    ['USD', 115]
+  ];
+  // 23rd has no row yet: the 22nd's rates are used.
+  assert.ok(Math.abs(rates.convertSum(table, amounts, 'EUR', '2026-09-23') - 1200) < 1e-9);
+  assert.ok(Math.abs(rates.convertSum(table, amounts, 'RSD', '2026-09-23') - 1200 * 117.5) < 1e-6);
+  assert.equal(rates.convertSum(table, [...amounts, ['GBP', 1]], 'EUR', '2026-09-23'), null);
+  assert.deepEqual(rates.missingCodes(table, ['GBP', 'RSD', 'EUR'], 'EUR', '2026-09-23'), ['GBP']);
+  assert.deepEqual(rates.missingCodes(rates.emptyRateTable(), ['GBP'], 'GBP', '2026-09-23'), []);
+  assert.deepEqual(rates.missingCodes(rates.emptyRateTable(), ['EUR'], 'GBP', '2026-09-23'), ['GBP']);
+});

@@ -16,18 +16,14 @@ import com.konhit.financeapp.domain.rates.FilteredBalance
 import com.konhit.financeapp.domain.repository.AccountRepository
 import com.konhit.financeapp.domain.repository.CategoryRepository
 import com.konhit.financeapp.domain.repository.CurrencyRepository
-import com.konhit.financeapp.domain.repository.ExchangeRateRepository
 import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.repository.TransactionRepository
+import com.konhit.financeapp.domain.usecase.EnsureRatesUseCase
 import com.konhit.financeapp.drive.SyncCoordinator
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import java.time.LocalDate
 
 data class TransactionFilter(
@@ -75,7 +71,7 @@ class FilterViewModel(
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
     private val currencyRepo: CurrencyRepository,
-    private val rateRepo: ExchangeRateRepository,
+    private val ensureRates: EnsureRatesUseCase,
     private val settings: SettingsRepository,
     private val syncCoordinator: SyncCoordinator,
     savedStateHandle: SavedStateHandle
@@ -195,46 +191,19 @@ class FilterViewModel(
 
         ratesJob = viewModelScope.launch {
             delay(RATES_DEBOUNCE_MS)
-            var fetches = ExchangeRates.plan(rateRepo.cached(), needs, today)
-            var failed = 0
-            if (fetches.isNotEmpty()) {
-                _state.update { it.copy(baseBalance = null, rateProgress = 0, rateError = null) }
-                val supported = try {
-                    rateRepo.supportedCodes()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    null
-                }
-                if (supported != null) fetches = ExchangeRates.plan(rateRepo.cached(), needs, today, supported)
-                val permits = Semaphore(PARALLEL_FETCHES)
-                var done = 0
-                coroutineScope {
-                    for (fetch in fetches) {
-                        launch {
-                            permits.withPermit {
-                                try {
-                                    rateRepo.fetch(fetch)
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (e: Exception) {
-                                    failed++
-                                }
-                            }
-                            done++
-                            _state.update { it.copy(rateProgress = done * 100 / fetches.size) }
-                        }
-                    }
+            val rates = ensureRates(needs, today) { percent ->
+                _state.update {
+                    it.copy(baseBalance = if (percent == 0) null else it.baseBalance, rateProgress = percent, rateError = null)
                 }
             }
-            val result = FilteredBalance.compute(legs, baseCode, rateRepo.cached())
+            val result = FilteredBalance.compute(legs, baseCode, rates.table)
             _state.update {
                 it.copy(
                     baseBalance = result.balance,
                     rateProgress = null,
                     rateError = when {
                         result.balance != null -> null
-                        failed > 0 -> "Couldn't load exchange rates. Check the connection and retry."
+                        rates.failed -> "Couldn't load exchange rates. Check the connection and retry."
                         else -> "No exchange rate for ${result.missingCodes.joinToString()}"
                     }
                 )
@@ -285,6 +254,5 @@ class FilterViewModel(
 
     private companion object {
         const val RATES_DEBOUNCE_MS = 300L
-        const val PARALLEL_FETCHES = 4
     }
 }

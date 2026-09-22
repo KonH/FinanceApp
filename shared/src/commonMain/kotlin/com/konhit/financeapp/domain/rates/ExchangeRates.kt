@@ -102,4 +102,18 @@ object ExchangeRates {
         val toRate = pivotRate(table, to, date) ?: return null
         return amount * toRate / fromRate
     }
+
+    /** Sum of [amounts] (currency code → amount) expressed in [to] at [date]'s rates; null when a rate is missing. */
+    fun convertSum(table: RateTable, amounts: List<Pair<String, Double>>, to: String, date: String): Double? {
+        var sum = 0.0
+        for ((code, amount) in amounts) sum += convert(table, amount, code, to, date) ?: return null
+        return sum
+    }
+
+    /** Currencies that stop [codes] from being converted into [to] on [date]. */
+    fun missingCodes(table: RateTable, codes: Collection<String>, to: String, date: String): List<String> {
+        val foreign = codes.filter { it != to }.distinct()
+        if (foreign.isEmpty()) return emptyList()
+        return (foreign + to).filter { pivotRate(table, it, date) == null }.sorted()
+    }
 }

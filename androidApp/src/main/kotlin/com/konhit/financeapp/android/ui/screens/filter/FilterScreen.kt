@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.konhit.financeapp.android.ui.components.BaseCurrencySelector
 import com.konhit.financeapp.android.ui.components.CategoryPickerDialog
 import com.konhit.financeapp.android.ui.util.formatAmount
 import com.konhit.financeapp.domain.model.Account
@@ -325,71 +326,15 @@ private fun FilterOptionsPanel(
         )
 
         Spacer(Modifier.height(12.dp))
-        Text("Base currency", style = MaterialTheme.typography.labelMedium)
-        Spacer(Modifier.height(4.dp))
-        BaseCurrencyDropdown(
+        BaseCurrencySelector(
             currencies = baseCurrencyOptions,
             selectedCurrencyId = baseCurrencyId,
-            onSelect = onBaseCurrencyChanged
+            rateProgress = rateProgress,
+            rateError = rateError,
+            onSelect = onBaseCurrencyChanged,
+            onRetry = onRetryRates
         )
-        if (rateProgress != null) {
-            Spacer(Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { rateProgress / 100f },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Text(
-                "Loading exchange rates… $rateProgress%",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-        } else if (rateError != null) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    rateError,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.weight(1f)
-                )
-                TextButton(onClick = onRetryRates) { Text("Retry") }
-            }
-        }
         Spacer(Modifier.height(16.dp))
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun BaseCurrencyDropdown(
-    currencies: List<Currency>,
-    selectedCurrencyId: Long?,
-    onSelect: (Long?) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val label: (Currency) -> String = { c -> c.name + (c.currencySymbol?.let { " ($it)" } ?: "") }
-    val selectedLabel = currencies.find { it.id == selectedCurrencyId }?.let(label) ?: "None"
-
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-        OutlinedTextField(
-            value = selectedLabel,
-            onValueChange = {},
-            readOnly = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor()
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text("None") },
-                onClick = { onSelect(null); expanded = false }
-            )
-            currencies.forEach { currency ->
-                DropdownMenuItem(
-                    text = { Text(label(currency)) },
-                    onClick = { onSelect(currency.id); expanded = false }
-                )
-            }
-        }
     }
 }
 

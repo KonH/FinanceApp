@@ -20,6 +20,7 @@ import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.repository.TransactionRepository
 import com.konhit.financeapp.domain.usecase.ComputeBalanceUseCase
 import com.konhit.financeapp.domain.usecase.ComputeBudgetUsageUseCase
+import com.konhit.financeapp.domain.usecase.EnsureRatesUseCase
 import com.konhit.financeapp.domain.usecase.InitialiseFileUseCase
 import com.konhit.financeapp.domain.usecase.OpenFileUseCase
 import com.konhit.financeapp.domain.usecase.ProcessDueScheduledUseCase
@@ -73,6 +74,7 @@ val sharedModule = module {
 
     factory { ComputeBalanceUseCase() }
     factory { ComputeBudgetUsageUseCase() }
+    factory { EnsureRatesUseCase(get()) }
     factory { InitialiseFileUseCase(get(), get(), get(), get(), get()) }
     factory { OpenFileUseCase(get(), get(), get()) }
     factory { ProcessDueScheduledUseCase(get(), get(), get(), get()) }

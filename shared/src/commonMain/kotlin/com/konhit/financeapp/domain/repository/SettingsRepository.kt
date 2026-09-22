@@ -30,4 +30,8 @@ interface SettingsRepository {
     fun observeBudgets(): Flow<Map<Long, Double>>
     suspend fun getBudgets(): Map<Long, Double>
     suspend fun saveBudget(currencyId: Long, amount: Double?)
+
+    /** Currency the main screen converts its totals into; null = per-currency totals. */
+    fun observeMainBaseCurrencyId(): Flow<Long?>
+    suspend fun saveMainBaseCurrencyId(currencyId: Long?)
 }

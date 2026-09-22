@@ -9,15 +9,9 @@ import { TransactionRow } from '../components/TransactionRow';
 import { buildPath } from '../../shared/category';
 import { formatAmount } from '../../shared/format';
 import { datePart, todayIso } from '../../shared/mmexDate';
-import {
-  balanceLegs,
-  balanceNeeds,
-  codeOf,
-  computeBaseBalance,
-  mergeRates,
-  planFetches,
-  type BaseCurrencyBalance
-} from '../../shared/rates';
+import { balanceLegs, balanceNeeds, codeOf, computeBaseBalance, type BaseCurrencyBalance } from '../../shared/rates';
+import { ensureRates } from '../rates';
+import { BaseCurrencySelect } from '../components/BaseCurrencySelect';
 import {
   EMPTY_FILTER,
   TRANSACTION_TYPES,
@@ -27,7 +21,6 @@ import {
 } from '../../shared/types';
 
 const RATES_DEBOUNCE_MS = 300;
-const PARALLEL_FETCHES = 4;
 
 interface FlowSummary {
   currency: Currency;
@@ -165,40 +158,24 @@ export function FilterScreen({
     const needs = balanceNeeds(legs, baseCode);
 
     const run = async (): Promise<void> => {
-      let table = await api.cachedRates();
-      let fetches = planFetches(table, needs, today);
-      let failed = 0;
-      if (fetches.length > 0) {
-        if (cancelled) return;
-        setBaseBalance(null);
-        setRateProgress(0);
-        setRateError(null);
-        const supported = await api.supportedRateCodes();
-        if (supported.ok && supported.value) {
-          fetches = planFetches(table, needs, today, new Set(supported.value));
-        }
-        let next = 0;
-        let done = 0;
-        const worker = async (): Promise<void> => {
-          while (!cancelled && next < fetches.length) {
-            const request = fetches[next++];
-            const result = await api.fetchRates(request);
-            if (result.ok && result.value) table = mergeRates(table, request, result.value);
-            else failed++;
-            done++;
-            if (!cancelled) setRateProgress(Math.floor((done * 100) / fetches.length));
-          }
-        };
-        await Promise.all(Array.from({ length: PARALLEL_FETCHES }, worker));
-      }
+      const rates = await ensureRates(
+        needs,
+        today,
+        (percent) => {
+          if (percent === 0) setBaseBalance(null);
+          setRateProgress(percent);
+          setRateError(null);
+        },
+        () => cancelled
+      );
       if (cancelled) return;
-      const result = computeBaseBalance(legs, baseCode, table);
+      const result = computeBaseBalance(legs, baseCode, rates.table);
       setBaseBalance(result.balance);
       setRateProgress(null);
       setRateError(
         result.balance !== null
           ? null
-          : failed > 0
+          : rates.failed
             ? "Couldn't load exchange rates. Check the connection and retry."
             : `No exchange rate for ${result.missingCodes.join(', ')}`
       );
@@ -361,36 +338,14 @@ export function FilterScreen({
               />
             </Field>
 
-            <div>
-              <SelectField
-                label="Base currency"
-                value={baseCurrencyId}
-                placeholder="None"
-                options={baseCurrencyOptions.map((c) => ({
-                  value: c.id,
-                  label: c.currencySymbol ? `${c.name} (${c.currencySymbol})` : c.name
-                }))}
-                onChange={setBaseCurrencyId}
-              />
-              {rateProgress !== null && (
-                <div style={{ marginTop: 8 }}>
-                  <div className="progress">
-                    <span style={{ width: `${rateProgress}%` }} />
-                  </div>
-                  <div className="muted small" style={{ marginTop: 4 }}>
-                    Loading exchange rates… {rateProgress}%
-                  </div>
-                </div>
-              )}
-              {rateProgress === null && rateError !== null && (
-                <div className="row" style={{ marginTop: 4 }}>
-                  <span className="small error-text">{rateError}</span>
-                  <button type="button" className="btn" onClick={() => setRatesAttempt((n) => n + 1)}>
-                    Retry
-                  </button>
-                </div>
-              )}
-            </div>
+            <BaseCurrencySelect
+              currencies={baseCurrencyOptions}
+              value={baseCurrencyId}
+              progress={rateProgress}
+              error={rateError}
+              onChange={setBaseCurrencyId}
+              onRetry={() => setRatesAttempt((n) => n + 1)}
+            />
 
             <div>
               <button

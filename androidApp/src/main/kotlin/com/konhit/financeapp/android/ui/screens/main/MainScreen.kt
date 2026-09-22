@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.konhit.financeapp.android.ui.components.BaseCurrencySelector
 import com.konhit.financeapp.android.ui.util.formatAmount
 import com.konhit.financeapp.domain.model.Account
 import com.konhit.financeapp.domain.model.Currency
@@ -33,6 +34,7 @@ fun MainScreen(
     val viewModel: MainViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
     var budgetExpanded by remember { mutableStateOf(false) }
+    val baseCurrency = state.baseCurrencyId?.let { state.currencies[it] }
 
     val syncState = state.syncState
     if (syncState is SyncState.Conflict) {
@@ -84,6 +86,8 @@ fun MainScreen(
             AccountGroupList(
                 groups = state.accountGroups,
                 currencies = state.currencies,
+                baseCurrency = baseCurrency,
+                baseGroupTotals = state.baseGroupTotals,
                 balanceVisible = state.balanceVisible,
                 onAccountClick = onAccountClick,
                 modifier = Modifier.weight(1f)
@@ -91,6 +95,7 @@ fun MainScreen(
 
             TotalBalanceSection(
                 totals = state.totalsByCurrency,
+                baseTotal = state.baseTotal?.let { total -> baseCurrency?.let { it to total } },
                 balanceVisible = state.balanceVisible
             )
 
@@ -105,6 +110,16 @@ fun MainScreen(
                     BudgetSection(state.budgetItems)
                 }
             }
+
+            BaseCurrencySelector(
+                currencies = state.baseCurrencyOptions,
+                selectedCurrencyId = state.baseCurrencyId,
+                rateProgress = state.rateProgress,
+                rateError = state.rateError,
+                onSelect = { viewModel.onBaseCurrencyChanged(it) },
+                onRetry = { viewModel.onRetryRates() },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
 
             if (syncState is SyncState.Error) {
                 Text(
@@ -121,6 +136,8 @@ fun MainScreen(
 private fun AccountGroupList(
     groups: List<AccountGroup>,
     currencies: Map<Long, Currency>,
+    baseCurrency: Currency?,
+    baseGroupTotals: Map<String, Double>,
     balanceVisible: Boolean,
     onAccountClick: (Long) -> Unit,
     modifier: Modifier = Modifier
@@ -147,7 +164,12 @@ private fun AccountGroupList(
                 HorizontalDivider()
             }
             item(key = "total_${group.type}") {
-                GroupTotalSection(group.totalsByCurrency, balanceVisible)
+                val baseTotal = baseGroupTotals[group.type]
+                GroupTotalSection(
+                    totals = if (baseCurrency != null && baseTotal != null) listOf(baseCurrency to baseTotal)
+                             else group.totalsByCurrency,
+                    balanceVisible = balanceVisible
+                )
             }
         }
     }
@@ -189,12 +211,16 @@ private fun GroupTotalSection(totals: List<Pair<Currency, Double>>, balanceVisib
 }
 
 @Composable
-private fun TotalBalanceSection(totals: List<Pair<Currency, Double>>, balanceVisible: Boolean) {
+private fun TotalBalanceSection(
+    totals: List<Pair<Currency, Double>>,
+    baseTotal: Pair<Currency, Double>?,
+    balanceVisible: Boolean
+) {
     if (totals.isEmpty()) return
     HorizontalDivider()
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text("Total", style = MaterialTheme.typography.labelMedium)
-        totals.forEach { (currency, total) ->
+        (baseTotal?.let { listOf(it) } ?: totals).forEach { (currency, total) ->
             Text(
                 if (balanceVisible) formatAmount(total, currency) else "•••",
                 style = MaterialTheme.typography.bodyMedium

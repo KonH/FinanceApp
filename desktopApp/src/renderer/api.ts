@@ -108,6 +108,8 @@ export const api = {
     invoke<Result>('settings:setUseLatestCategory', type, enabled),
   setBudget: (currencyId: number, amount: number | null) =>
     invoke<Result>('settings:setBudget', currencyId, amount),
+  setMainBaseCurrency: (currencyId: number | null) =>
+    invoke<Result>('settings:setMainBaseCurrency', currencyId),
 
   cachedRates: () => invoke<RateTable>('rates:cached'),
   supportedRateCodes: () => invoke<Result<string[]>>('rates:supported'),

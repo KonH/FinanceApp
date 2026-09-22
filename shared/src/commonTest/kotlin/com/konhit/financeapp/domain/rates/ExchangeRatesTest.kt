@@ -92,6 +92,23 @@ class ExchangeRatesTest {
         assertEquals(setOf(RateNeed("USD", "2019-05-03"), RateNeed("EUR", "2019-05-03")), FilteredBalance.needs(legs, "EUR"))
     }
 
+    @Test
+    fun convertSum_convertsAccountTotals_andReportsMissingRates() {
+        val table = ExchangeRates.merge(
+            RateTable(),
+            RateFetch("2026-09", "2026-08-25", "2026-09-23", listOf("RSD", "USD")),
+            listOf(RateRow("2026-09-22", "RSD", 117.5), RateRow("2026-09-22", "USD", 1.15))
+        )
+        val amounts = listOf("RSD" to 117_500.0, "EUR" to 100.0, "USD" to 115.0)
+        // 23rd has no row yet: the 22nd's rates are used.
+        assertEquals(1200.0, ExchangeRates.convertSum(table, amounts, "EUR", "2026-09-23")!!, 1e-9)
+        assertEquals(1200.0 * 117.5, ExchangeRates.convertSum(table, amounts, "RSD", "2026-09-23")!!, 1e-6)
+        assertNull(ExchangeRates.convertSum(table, amounts + ("GBP" to 1.0), "EUR", "2026-09-23"))
+        assertEquals(listOf("GBP"), ExchangeRates.missingCodes(table, listOf("GBP", "RSD", "EUR"), "EUR", "2026-09-23"))
+        assertTrue(ExchangeRates.missingCodes(RateTable(), listOf("GBP"), "GBP", "2026-09-23").isEmpty())
+        assertEquals(listOf("GBP"), ExchangeRates.missingCodes(RateTable(), listOf("EUR"), "GBP", "2026-09-23"))
+    }
+
     private fun tx(
         id: Long,
         type: TransactionType,

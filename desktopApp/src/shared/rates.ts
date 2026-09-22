@@ -121,6 +121,24 @@ export function convert(table: RateTable, amount: number, from: string, to: stri
   return (amount * toRate) / fromRate;
 }
 
+/** Sum of `amounts` (currency code, amount) expressed in `to` at `date`'s rates; null when a rate is missing. */
+export function convertSum(table: RateTable, amounts: Array<[string, number]>, to: string, date: string): number | null {
+  let sum = 0;
+  for (const [code, amount] of amounts) {
+    const converted = convert(table, amount, code, to, date);
+    if (converted === null) return null;
+    sum += converted;
+  }
+  return sum;
+}
+
+/** Currencies that stop `codes` from being converted into `to` on `date`. */
+export function missingCodes(table: RateTable, codes: string[], to: string, date: string): string[] {
+  const foreign = [...new Set(codes.filter((code) => code !== to))];
+  if (foreign.length === 0) return [];
+  return [...foreign, to].filter((code) => pivotRate(table, code, date) === null).sort();
+}
+
 // ------------------------------------------------------ filtered balance
 
 /** One signed movement of money, in the currency (`code`) of the account it touched. */

@@ -31,6 +31,7 @@ class SettingsRepositoryImpl(
     private val keyUseLatestTransfer    = booleanPreferencesKey("use_latest_transfer")
 
     private val keyBudgets = stringPreferencesKey("budgets")
+    private val keyMainBaseCurrency = longPreferencesKey("main_base_currency_id")
 
     private fun defaultCatKey(type: TransactionType) = when (type) {
         TransactionType.DEPOSIT    -> keyDefaultCatDeposit
@@ -118,6 +119,15 @@ class SettingsRepositoryImpl(
             val current = parseBudgets(prefs[keyBudgets]).toMutableMap()
             if (amount != null && amount > 0) current[currencyId] = amount else current.remove(currencyId)
             prefs[keyBudgets] = current.entries.joinToString(",") { "${it.key}:${it.value}" }
+        }
+    }
+
+    override fun observeMainBaseCurrencyId(): Flow<Long?> =
+        dataStore.data.map { prefs -> prefs[keyMainBaseCurrency] }
+
+    override suspend fun saveMainBaseCurrencyId(currencyId: Long?) {
+        dataStore.edit { prefs ->
+            if (currencyId != null) prefs[keyMainBaseCurrency] = currencyId else prefs.remove(keyMainBaseCurrency)
         }
     }
 

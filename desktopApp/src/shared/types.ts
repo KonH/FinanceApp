@@ -123,6 +123,8 @@ export interface AppSettings {
   useLatestCategory: Partial<Record<TransactionType, boolean>>;
   budgets: Record<string, number>;
   hiddenAccountIds: number[];
+  /** Currency the main screen converts its totals into; null = per-currency totals. */
+  mainBaseCurrencyId: number | null;
 }
 
 export interface TransactionFilter {

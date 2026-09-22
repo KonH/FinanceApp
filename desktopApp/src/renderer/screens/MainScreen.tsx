@@ -4,9 +4,12 @@ import { api } from '../api';
 import { useStore } from '../store';
 import { ListItem, TopBar } from '../components/ui';
 import { IconButton } from '../components/Icon';
+import { BaseCurrencySelect } from '../components/BaseCurrencySelect';
+import { ensureRates } from '../rates';
 import { computeBudgetUsage, type BudgetUsage } from '../../shared/balance';
-import { currentYearMonth, daysInMonth } from '../../shared/mmexDate';
+import { currentYearMonth, daysInMonth, todayIso } from '../../shared/mmexDate';
 import { currencyLabel, formatAmount } from '../../shared/format';
+import { codeOf, convertSum, missingCodes, type RateNeed } from '../../shared/rates';
 import type { Account, Currency } from '../../shared/types';
 
 interface AccountGroup {
@@ -15,11 +18,24 @@ interface AccountGroup {
   totals: Array<[Currency, number]>;
 }
 
-/** Port of `MainScreen` — accounts grouped by type with per-currency totals. */
+/** Totals converted into the base currency: the grand total and one per account type. */
+interface BaseTotals {
+  total: number;
+  groups: Map<string, number>;
+}
+
+/**
+ * Port of `MainScreen` — accounts grouped by type with per-currency totals, or
+ * totals converted into the persisted base currency at today's rate.
+ */
 export function MainScreen({ nav }: { nav: Navigator }): React.ReactElement {
   const store = useStore();
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [usages, setUsages] = useState<BudgetUsage[]>([]);
+  const [baseTotals, setBaseTotals] = useState<BaseTotals | null>(null);
+  const [rateProgress, setRateProgress] = useState<number | null>(null);
+  const [rateError, setRateError] = useState<string | null>(null);
+  const [ratesAttempt, setRatesAttempt] = useState(0);
 
   const budgets = store.snapshot?.settings.budgets ?? {};
 
@@ -67,6 +83,70 @@ export function MainScreen({ nav }: { nav: Navigator }): React.ReactElement {
     () => totalsByCurrency(store.visibleAccounts, store.currencyById),
     [store.currencyById, store.visibleAccounts]
   );
+
+  const baseCurrencyId = store.snapshot?.settings.mainBaseCurrencyId ?? null;
+  const baseCurrency = baseCurrencyId !== null ? store.currencyById.get(baseCurrencyId) : undefined;
+
+  const baseCurrencyOptions = useMemo(() => {
+    const ids = new Set(store.visibleAccounts.map((a) => a.currencyId));
+    if (baseCurrencyId !== null) ids.add(baseCurrencyId);
+    return store.currencies.filter((c) => ids.has(c.id)).sort((a, b) => a.name.localeCompare(b.name));
+  }, [baseCurrencyId, store.currencies, store.visibleAccounts]);
+
+  // Totals are current balances, so they convert at today's rate; account rows
+  // keep their own currency.
+  useEffect(() => {
+    if (!baseCurrency) {
+      setBaseTotals(null);
+      setRateProgress(null);
+      setRateError(null);
+      return;
+    }
+    let cancelled = false;
+    const today = todayIso();
+    const baseCode = codeOf(baseCurrency);
+    const groupAmounts = groups.map(
+      (group) => [group.type, group.totals.map(([c, total]) => [codeOf(c), total] as [string, number])] as const
+    );
+    const allAmounts = groupAmounts.flatMap(([, amounts]) => amounts);
+    const needs: RateNeed[] = [];
+    for (const [code] of allAmounts) {
+      if (code !== baseCode) needs.push({ code, date: today }, { code: baseCode, date: today });
+    }
+
+    void (async () => {
+      const rates = await ensureRates(
+        needs,
+        today,
+        (percent) => {
+          setRateProgress(percent);
+          setRateError(null);
+        },
+        () => cancelled
+      );
+      if (cancelled) return;
+      const total = convertSum(rates.table, allAmounts, baseCode, today);
+      const groupTotals = new Map<string, number>();
+      if (total !== null) {
+        for (const [type, amounts] of groupAmounts) {
+          const converted = convertSum(rates.table, amounts, baseCode, today);
+          if (converted !== null) groupTotals.set(type, converted);
+        }
+      }
+      setBaseTotals(total !== null ? { total, groups: groupTotals } : null);
+      setRateProgress(null);
+      setRateError(
+        total !== null
+          ? null
+          : rates.failed
+            ? "Couldn't load exchange rates. Check the connection and retry."
+            : `No exchange rate for ${missingCodes(rates.table, allAmounts.map(([code]) => code), baseCode, today).join(', ')}`
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [baseCurrency, groups, ratesAttempt]);
 
   const money = (value: number, currency: Currency | undefined): string =>
     store.balanceVisible ? formatAmount(value, currency) : '•••';
@@ -118,11 +198,17 @@ export function MainScreen({ nav }: { nav: Navigator }): React.ReactElement {
             ))}
             {group.totals.length > 0 && (
               <div className="totals" style={{ padding: '6px 16px' }}>
-                {group.totals.map(([currency, total]) => (
-                  <span key={currency.id} className="muted small amount">
-                    {money(total, currency)}
+                {baseTotals?.groups.has(group.type) ? (
+                  <span className="muted small amount">
+                    {money(baseTotals.groups.get(group.type)!, baseCurrency)}
                   </span>
-                ))}
+                ) : (
+                  group.totals.map(([currency, total]) => (
+                    <span key={currency.id} className="muted small amount">
+                      {money(total, currency)}
+                    </span>
+                  ))
+                )}
               </div>
             )}
           </section>
@@ -133,11 +219,15 @@ export function MainScreen({ nav }: { nav: Navigator }): React.ReactElement {
         {grandTotals.length > 0 && (
           <div className="totals" style={{ marginBottom: 6 }}>
             <span className="field-label">Total</span>
-            {grandTotals.map(([currency, total]) => (
-              <span key={currency.id} className="amount">
-                {money(total, currency)}
-              </span>
-            ))}
+            {baseTotals ? (
+              <span className="amount">{money(baseTotals.total, baseCurrency)}</span>
+            ) : (
+              grandTotals.map(([currency, total]) => (
+                <span key={currency.id} className="amount">
+                  {money(total, currency)}
+                </span>
+              ))
+            )}
           </div>
         )}
 
@@ -173,6 +263,17 @@ export function MainScreen({ nav }: { nav: Navigator }): React.ReactElement {
             )}
           </>
         )}
+
+        <div style={{ marginTop: 8 }}>
+          <BaseCurrencySelect
+            currencies={baseCurrencyOptions}
+            value={baseCurrencyId}
+            progress={rateProgress}
+            error={rateError}
+            onChange={(id) => void store.run(() => api.setMainBaseCurrency(id))}
+            onRetry={() => setRatesAttempt((n) => n + 1)}
+          />
+        </div>
 
         {store.syncState.kind === 'Error' && (
           <div className="error-text small">Sync error: {store.syncState.message}</div>

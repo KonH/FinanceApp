@@ -403,6 +403,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       return ok();
     },
 
+    'settings:setMainBaseCurrency': (...args: never[]): Result => {
+      const [currencyId] = args as unknown as [number | null];
+      settingsStore.patch({ mainBaseCurrencyId: currencyId });
+      return ok();
+    },
+
     // ---------------------------------------------------------------- rates
     'rates:cached': () => rates.cachedRates(),
 
