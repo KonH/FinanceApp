@@ -134,6 +134,7 @@ export interface TransactionFilter {
   endDate: string | null;
   minAmount: number | null;
   maxAmount: number | null;
+  comment: string | null;
 }
 
 export const EMPTY_FILTER: TransactionFilter = {
@@ -144,5 +145,6 @@ export const EMPTY_FILTER: TransactionFilter = {
   startDate: null,
   endDate: null,
   minAmount: null,
-  maxAmount: null
+  maxAmount: null,
+  comment: null
 };

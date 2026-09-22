@@ -113,7 +113,10 @@ fun AppNavGraph(
             route = Routes.FILTER,
             arguments = listOf(navArgument("accountId") { type = NavType.LongType; defaultValue = -1L })
         ) {
-            FilterScreen(onBack = { navController.popBackStack() })
+            FilterScreen(
+                onBack = { navController.popBackStack() },
+                onEditTransaction = { transId -> navController.navigate(Routes.transactionEdit(transId)) }
+            )
         }
 
         composable(

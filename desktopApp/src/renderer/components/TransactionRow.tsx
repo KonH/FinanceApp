@@ -27,13 +27,16 @@ export function TransactionRow({
   onDelete?: () => void;
 }): React.ReactElement {
   const title = (
-    <span className="row" style={{ gap: 6 }}>
-      {fromSchedule(transaction) && (
-        <span className="muted" title="From schedule">
-          <Icon name="repeat" size={14} />
-        </span>
-      )}
-      <span className="list-item-title">{categoryPath || transaction.notes || ''}</span>
+    <span className="stack" style={{ gap: 2 }}>
+      <span className="row" style={{ gap: 6 }}>
+        {fromSchedule(transaction) && (
+          <span className="muted" title="From schedule">
+            <Icon name="repeat" size={14} />
+          </span>
+        )}
+        <span className="list-item-title">{categoryPath}</span>
+      </span>
+      {transaction.notes && <span className="muted small">{transaction.notes}</span>}
     </span>
   );
 

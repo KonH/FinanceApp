@@ -9,6 +9,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EventRepeat
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -31,12 +33,30 @@ import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilterScreen(onBack: () -> Unit) {
+fun FilterScreen(onBack: () -> Unit, onEditTransaction: (Long) -> Unit) {
     val viewModel: FilterViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
 
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
+    var transactionToDelete by remember { mutableStateOf<Long?>(null) }
+
+    transactionToDelete?.let { transId ->
+        AlertDialog(
+            onDismissRequest = { transactionToDelete = null },
+            title = { Text("Delete transaction?") },
+            text = { Text("This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.onDeleteTransaction(transId)
+                    transactionToDelete = null
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { transactionToDelete = null }) { Text("Cancel") }
+            }
+        )
+    }
 
     if (showStartDatePicker) {
         val pickerState = rememberDatePickerState()
@@ -119,7 +139,10 @@ fun FilterScreen(onBack: () -> Unit) {
                     transaction = tx,
                     categories = state.categories,
                     accountCurrenciesMap = state.accountCurrenciesMap,
-                    accounts = state.accounts
+                    accounts = state.accounts,
+                    isReadOnly = state.isReadOnly,
+                    onEdit = { onEditTransaction(tx.transId) },
+                    onDelete = { transactionToDelete = tx.transId }
                 )
                 HorizontalDivider()
             }
@@ -272,6 +295,17 @@ private fun FilterOptionsPanel(
                 modifier = Modifier.weight(1f)
             )
         }
+
+        Spacer(Modifier.height(12.dp))
+        Text("Comment", style = MaterialTheme.typography.labelMedium)
+        Spacer(Modifier.height(4.dp))
+        OutlinedTextField(
+            value = filter.comment ?: "",
+            onValueChange = { onFilterChanged(filter.copy(comment = it.ifBlank { null })) },
+            placeholder = { Text("Contains…") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
         Spacer(Modifier.height(16.dp))
     }
 }
@@ -407,7 +441,10 @@ private fun FilterTransactionRow(
     transaction: Transaction,
     categories: Map<Long, String>,
     accountCurrenciesMap: Map<Long, Currency>,
-    accounts: List<Account>
+    accounts: List<Account>,
+    isReadOnly: Boolean,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val amountColor = when (transaction.type) {
         TransactionType.DEPOSIT    -> Color(0xFF2E7D32)
@@ -419,30 +456,49 @@ private fun FilterTransactionRow(
 
     ListItem(
         headlineContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (transaction.fromSchedule) {
-                    Icon(
-                        Icons.Default.EventRepeat,
-                        contentDescription = "From schedule",
-                        modifier = Modifier.padding(end = 6.dp).size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (transaction.fromSchedule) {
+                        Icon(
+                            Icons.Default.EventRepeat,
+                            contentDescription = "From schedule",
+                            modifier = Modifier.padding(end = 6.dp).size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Text(categories[transaction.categId] ?: "")
+                }
+                if (!transaction.notes.isNullOrBlank()) {
+                    Text(
+                        transaction.notes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Text(categories[transaction.categId] ?: transaction.notes ?: "")
             }
         },
         supportingContent = {
             Text("${transaction.transDate.substringBefore('T')}  ·  $accountName")
         },
         trailingContent = {
-            val amountText = when (transaction.type) {
-                TransactionType.TRANSFER -> {
-                    val toCurrency = accountCurrenciesMap[transaction.toAccountId]
-                    "${formatAmount(transaction.transAmount, currency)} → ${formatAmount(transaction.toTransAmount, toCurrency)}"
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val amountText = when (transaction.type) {
+                    TransactionType.TRANSFER -> {
+                        val toCurrency = accountCurrenciesMap[transaction.toAccountId]
+                        "${formatAmount(transaction.transAmount, currency)} → ${formatAmount(transaction.toTransAmount, toCurrency)}"
+                    }
+                    else -> formatAmount(transaction.transAmount, currency)
                 }
-                else -> formatAmount(transaction.transAmount, currency)
+                Text(amountText, color = amountColor, modifier = Modifier.padding(end = 8.dp))
+                if (!isReadOnly) {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete")
+                    }
+                }
             }
-            Text(amountText, color = amountColor)
         }
     )
 }

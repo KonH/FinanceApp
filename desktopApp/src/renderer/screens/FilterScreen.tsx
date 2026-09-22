@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import type { Navigator } from '../App';
 import { api } from '../api';
 import { useStore } from '../store';
-import { Field, SelectField, TopBar } from '../components/ui';
+import { ConfirmDialog, Field, SelectField, TopBar } from '../components/ui';
 import { Icon, IconButton } from '../components/Icon';
 import { CategoryPickerDialog } from '../components/CategoryPickerDialog';
 import { TransactionRow } from '../components/TransactionRow';
@@ -38,10 +38,13 @@ export function FilterScreen({
   const [all, setAll] = useState<Transaction[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  useEffect(() => {
+  const load = (): void => {
     void api.allTransactions().then(setAll);
-  }, [store.snapshot]);
+  };
+
+  useEffect(load, [store.snapshot]);
 
   const categoryPaths = useMemo(() => {
     const map = new Map<number, string>();
@@ -69,6 +72,7 @@ export function FilterScreen({
       if (filter.endDate !== null && datePart(tx.transDate) > filter.endDate) return false;
       if (filter.minAmount !== null && tx.transAmount < filter.minAmount) return false;
       if (filter.maxAmount !== null && tx.transAmount > filter.maxAmount) return false;
+      if (filter.comment && !(tx.notes ?? '').toLowerCase().includes(filter.comment.toLowerCase())) return false;
       if (text) {
         const haystack = [
           tx.notes ?? '',
@@ -247,6 +251,15 @@ export function FilterScreen({
               </div>
             </div>
 
+            <Field label="Comment">
+              <input
+                className="input"
+                placeholder="Contains…"
+                value={filter.comment ?? ''}
+                onChange={(event) => patch({ comment: event.target.value || null })}
+              />
+            </Field>
+
             <div>
               <button
                 type="button"
@@ -280,6 +293,7 @@ export function FilterScreen({
                 ? undefined
                 : () => nav.push({ name: 'transaction', accountId: null, transId: tx.transId })
             }
+            onDelete={store.isReadOnly ? undefined : () => setDeleteId(tx.transId)}
           />
         ))}
       </div>
@@ -307,6 +321,19 @@ export function FilterScreen({
             setPickerOpen(false);
           }}
           onDismiss={() => setPickerOpen(false)}
+        />
+      )}
+
+      {deleteId !== null && (
+        <ConfirmDialog
+          title="Delete transaction?"
+          message="This cannot be undone."
+          onCancel={() => setDeleteId(null)}
+          onConfirm={() => {
+            const id = deleteId;
+            setDeleteId(null);
+            void store.run(() => api.deleteTransaction(id)).then(load);
+          }}
         />
       )}
     </div>

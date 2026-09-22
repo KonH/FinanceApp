@@ -1,7 +1,7 @@
 {
   "name": "financeapp-desktop",
   "productName": "FinanceApp",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Chromium-based desktop client for MoneyManagerEx .mmb files — desktop twin of the FinanceApp Android app",
   "author": "KonH",
   "license": "MIT",

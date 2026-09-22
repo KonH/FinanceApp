@@ -69,6 +69,8 @@ val appModule = module {
             accountRepo      = get(),
             categoryRepo     = get(),
             currencyRepo     = get(),
+            settings         = get(),
+            syncCoordinator  = get(),
             savedStateHandle = get()
         )
     }

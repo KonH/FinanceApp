@@ -4,14 +4,18 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.konhit.financeapp.domain.model.Account
+import com.konhit.financeapp.domain.model.AccessMode
 import com.konhit.financeapp.domain.model.Category
 import com.konhit.financeapp.domain.model.Currency
 import com.konhit.financeapp.domain.model.Transaction
 import com.konhit.financeapp.domain.model.TransactionType
+import com.konhit.financeapp.domain.model.buildPath
 import com.konhit.financeapp.domain.repository.AccountRepository
 import com.konhit.financeapp.domain.repository.CategoryRepository
 import com.konhit.financeapp.domain.repository.CurrencyRepository
+import com.konhit.financeapp.domain.repository.SettingsRepository
 import com.konhit.financeapp.domain.repository.TransactionRepository
+import com.konhit.financeapp.drive.SyncCoordinator
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -23,7 +27,8 @@ data class TransactionFilter(
     val startDate: String? = null,
     val endDate: String? = null,
     val minAmount: Double? = null,
-    val maxAmount: Double? = null
+    val maxAmount: Double? = null,
+    val comment: String? = null
 )
 
 data class CurrencyFlowSummary(
@@ -42,7 +47,8 @@ data class FilterState(
     val accountCurrenciesMap: Map<Long, Currency> = emptyMap(),
     val transactions: List<Transaction> = emptyList(),
     val flowSummaries: List<CurrencyFlowSummary> = emptyList(),
-    val isFiltersExpanded: Boolean = true
+    val isFiltersExpanded: Boolean = true,
+    val isReadOnly: Boolean = false
 )
 
 class FilterViewModel(
@@ -50,6 +56,8 @@ class FilterViewModel(
     private val accountRepo: AccountRepository,
     private val categoryRepo: CategoryRepository,
     private val currencyRepo: CurrencyRepository,
+    private val settings: SettingsRepository,
+    private val syncCoordinator: SyncCoordinator,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -64,6 +72,11 @@ class FilterViewModel(
     private var allTransactions: List<Transaction> = emptyList()
 
     init {
+        viewModelScope.launch {
+            settings.observeAccessMode().collect { mode ->
+                _state.update { it.copy(isReadOnly = mode == AccessMode.READ_ONLY) }
+            }
+        }
         viewModelScope.launch {
             val accounts = accountRepo.getAll()
             val allCurrencies = currencyRepo.getAll()
@@ -83,7 +96,7 @@ class FilterViewModel(
         }
         viewModelScope.launch {
             val cats = categoryRepo.getAll()
-            _state.update { it.copy(categoryList = cats, categories = cats.associate { it.id to it.name }) }
+            _state.update { it.copy(categoryList = cats, categories = cats.associate { it.id to cats.buildPath(it.id) }) }
         }
         viewModelScope.launch {
             transactionRepo.observeAll().collect { txs ->
@@ -100,6 +113,13 @@ class FilterViewModel(
 
     fun onToggleFiltersExpanded() {
         _state.update { it.copy(isFiltersExpanded = !it.isFiltersExpanded) }
+    }
+
+    fun onDeleteTransaction(transId: Long) {
+        viewModelScope.launch {
+            transactionRepo.delete(transId)
+            syncCoordinator.uploadCurrent()
+        }
     }
 
     private fun recompute() {
@@ -125,7 +145,8 @@ class FilterViewModel(
         (filter.startDate == null || tx.transDate.substringBefore('T') >= filter.startDate) &&
         (filter.endDate == null || tx.transDate.substringBefore('T') <= filter.endDate) &&
         (filter.minAmount == null || tx.transAmount >= filter.minAmount) &&
-        (filter.maxAmount == null || tx.transAmount <= filter.maxAmount)
+        (filter.maxAmount == null || tx.transAmount <= filter.maxAmount) &&
+        (filter.comment.isNullOrBlank() || (tx.notes ?: "").contains(filter.comment, ignoreCase = true))
     }
 
     private fun computeFlowSummaries(

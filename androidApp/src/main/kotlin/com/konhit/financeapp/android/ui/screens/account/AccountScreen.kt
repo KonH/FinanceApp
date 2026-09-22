@@ -154,18 +154,27 @@ private fun TransactionRow(
 ) {
     ListItem(
         headlineContent = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (transaction.fromSchedule) {
-                    Icon(
-                        Icons.Default.EventRepeat,
-                        contentDescription = "From schedule",
-                        modifier = Modifier
-                            .padding(end = 6.dp)
-                            .size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (transaction.fromSchedule) {
+                        Icon(
+                            Icons.Default.EventRepeat,
+                            contentDescription = "From schedule",
+                            modifier = Modifier
+                                .padding(end = 6.dp)
+                                .size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Text(categories[transaction.categId] ?: "")
+                }
+                if (!transaction.notes.isNullOrBlank()) {
+                    Text(
+                        transaction.notes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Text(categories[transaction.categId] ?: transaction.notes ?: "")
             }
         },
         supportingContent = { Text(transaction.transDate.substringBefore('T')) },

@@ -18,17 +18,9 @@ asar: true
 
 win:
   target:
-    - target: nsis
-      arch: [x64]
     - target: portable
       arch: [x64]
   icon: resources/icon.png
-
-nsis:
-  oneClick: false
-  perMachine: false
-  allowToChangeInstallationDirectory: true
-  shortcutName: FinanceApp
 
 # The portable build keeps a fixed file name so a desktop shortcut to it keeps
 # working after an update; the version lives in the app, not in the path.
