@@ -168,9 +168,10 @@ private fun TransactionRow(
                     }
                     Text(categories[transaction.categId] ?: "")
                 }
-                if (!transaction.notes.isNullOrBlank()) {
+                val notes = transaction.notes
+                if (!notes.isNullOrBlank()) {
                     Text(
-                        transaction.notes,
+                        notes,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
